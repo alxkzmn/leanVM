@@ -26,6 +26,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "air_snark"
+version = "0.1.0"
+dependencies = [
+ "air",
+ "multilinear-toolkit",
+ "p3-air",
+ "p3-field",
+ "p3-koala-bear",
+ "p3-util",
+ "rand",
+ "sub_protocols",
+ "utils",
+ "whir-p3",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

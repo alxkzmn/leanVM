@@ -1,0 +1,21 @@
+[package]
+name = "air_snark"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+air.workspace = true
+sub_protocols.workspace = true
+utils.workspace = true
+multilinear-toolkit.workspace = true
+whir-p3.workspace = true
+p3-util.workspace = true
+p3-field.workspace = true
+p3-air.workspace = true
+
+[dev-dependencies]
+p3-koala-bear.workspace = true
+rand.workspace = true
+
+[lints]
+workspace = true
