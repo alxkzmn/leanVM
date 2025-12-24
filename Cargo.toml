@@ -77,6 +77,7 @@ p3-baby-bear = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "
 p3-poseidon2 = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
 p3-symmetric = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
 p3-air = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
+p3-field = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
 p3-goldilocks = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
 p3-challenger = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
 p3-util = { git = "https://github.com/TomWambsgans/Plonky3.git", branch = "lean-multisig" }
