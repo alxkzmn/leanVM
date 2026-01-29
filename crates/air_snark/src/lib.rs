@@ -18,9 +18,12 @@ use sub_protocols::{
     ColDims, packed_pcs_commit, packed_pcs_global_statements_for_prover, packed_pcs_global_statements_for_verifier,
     packed_pcs_parse_commitment,
 };
-use utils::{FSProver, FSVerifier};
+pub use utils::{FSProver, FSVerifier, build_challenger, build_prover_state};
 use whir_p3::WhirConfig;
 use whir_p3::WhirConfigBuilder;
+
+pub mod preprocessing;
+pub use preprocessing::*;
 
 /// Configuration for proving/verifying a single AIR with WHIR-backed commitments.
 #[derive(Debug, Clone)]
@@ -28,6 +31,53 @@ pub struct AirSnarkConfig {
     pub univariate_skips: usize,
     pub log_smallest_decomposition_chunk: usize,
     pub whir_config_builder: WhirConfigBuilder,
+}
+
+/// Prove a single AIR (base-field trace columns only) and bind it to a WHIR commitment.
+///
+/// This is the external-consumer-friendly API: no `columns_ef` / `last_row_shifted_ef`.
+pub fn prove_single_air_with_whir_base<EF, A>(
+    prover_state: FSProver<EF, impl FSChallenger<EF>>,
+    air: &A,
+    extra_data: A::ExtraData,
+    config: &AirSnarkConfig,
+    columns_f: &[impl AsRef<[PF<EF>]>],
+    last_row_shifted_f: &[PF<EF>],
+) -> Proof<PF<EF>>
+where
+    EF: ExtensionField<PF<EF>> + TwoAdicField,
+    PF<EF>: PrimeField64 + TwoAdicField,
+    A: Air,
+    A::ExtraData: AlphaPowersMut<EF> + AlphaPowers<EF>,
+{
+    let empty_columns_ef: Vec<&[EF]> = vec![];
+    let empty_last_row_shifted_ef: Vec<EF> = vec![];
+    prove_single_air_with_whir(
+        prover_state,
+        air,
+        extra_data,
+        config,
+        columns_f,
+        &empty_columns_ef,
+        last_row_shifted_f,
+        &empty_last_row_shifted_ef,
+    )
+}
+
+/// Verify a single AIR proof produced by [`prove_single_air_with_whir_base`].
+pub fn verify_single_air_with_whir_base<EF, A>(
+    verifier_state: &mut FSVerifier<EF, impl FSChallenger<EF>>,
+    air: &A,
+    extra_data: A::ExtraData,
+    config: &AirSnarkConfig,
+) -> Result<(), ProofError>
+where
+    EF: ExtensionField<PF<EF>> + TwoAdicField,
+    PF<EF>: PrimeField64 + TwoAdicField,
+    A: Air,
+    A::ExtraData: AlphaPowersMut<EF> + AlphaPowers<EF>,
+{
+    verify_single_air_with_whir(verifier_state, air, extra_data, config)
 }
 
 /// Prove a single AIR and bind it to a WHIR commitment to the trace columns.

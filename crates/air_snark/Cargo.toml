@@ -12,6 +12,8 @@ whir-p3.workspace = true
 p3-util.workspace = true
 p3-field.workspace = true
 p3-air.workspace = true
+serde.workspace = true
+bincode.workspace = true
 
 [dev-dependencies]
 p3-koala-bear.workspace = true
