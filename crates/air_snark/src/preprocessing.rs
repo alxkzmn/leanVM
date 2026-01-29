@@ -3,9 +3,9 @@ use p3_field::TwoAdicField;
 use serde::{Deserialize, Serialize};
 use sub_protocols::{ColDims, MultilinearChunks};
 
-use crate::AirSnarkConfig;
+use crate::{AirSnarkConfig, AirSnarkTraceLayout};
 
-const PREPROC_VERSION: u32 = 1;
+const PREPROC_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityAssumptionSerde {
@@ -96,6 +96,36 @@ impl From<&WhirParamsSerde> for whir_p3::WhirConfigBuilder {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ColDimsSerde {
+    pub n_vars: usize,
+    pub log_public_data_size: Option<usize>,
+    pub committed_size: usize,
+    pub default_value_u64: u64,
+}
+
+impl<PF: p3_field::PrimeField64> From<&ColDims<PF>> for ColDimsSerde {
+    fn from(v: &ColDims<PF>) -> Self {
+        Self {
+            n_vars: v.n_vars,
+            log_public_data_size: v.log_public_data_size,
+            committed_size: v.committed_size,
+            default_value_u64: v.default_value.as_canonical_u64(),
+        }
+    }
+}
+
+impl ColDimsSerde {
+    pub fn to_coldims<PF: p3_field::PrimeField64>(&self) -> ColDims<PF> {
+        ColDims {
+            n_vars: self.n_vars,
+            log_public_data_size: self.log_public_data_size,
+            committed_size: self.committed_size,
+            default_value: PF::from_u64(self.default_value_u64),
+        }
+    }
+}
+
 /// Serializable preprocessing artifact for a fixed AIR/trace shape.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AirSnarkPreprocessing {
@@ -104,7 +134,9 @@ pub struct AirSnarkPreprocessing {
     pub n_columns_f: usize,
     pub log_smallest_decomposition_chunk: usize,
     pub univariate_skips: usize,
+    pub security_bits: usize,
     pub whir_params: WhirParamsSerde,
+    pub dims_f: Vec<ColDimsSerde>,
     pub packed_n_vars: usize,
     pub required_dft_twiddles_n: usize,
     pub n_constraints: usize,
@@ -114,12 +146,27 @@ impl AirSnarkPreprocessing {
     /// Build preprocessing info for a base-field-only AIR of fixed height.
     pub fn build_for_air_base<PF, A>(air: &A, log_n_rows: usize, config: &AirSnarkConfig) -> Self
     where
-        PF: p3_field::Field,
+        PF: p3_field::PrimeField64,
         A: Air,
     {
         let n_columns_f = air.n_columns_f_air();
-        let dims = vec![ColDims::<PF>::full(log_n_rows); n_columns_f];
-        let chunks = MultilinearChunks::compute(&dims, config.log_smallest_decomposition_chunk);
+        let layout = AirSnarkTraceLayout::<PF>::all_committed(log_n_rows, n_columns_f);
+        Self::build_for_air_base_with_layout(air, log_n_rows, config, &layout)
+    }
+
+    pub fn build_for_air_base_with_layout<PF, A>(
+        air: &A,
+        log_n_rows: usize,
+        config: &AirSnarkConfig,
+        layout: &AirSnarkTraceLayout<PF>,
+    ) -> Self
+    where
+        PF: p3_field::PrimeField64,
+        A: Air,
+    {
+        let n_columns_f = air.n_columns_f_air();
+        assert_eq!(layout.dims_f.len(), n_columns_f);
+        let chunks = MultilinearChunks::compute(&layout.dims_f, config.log_smallest_decomposition_chunk);
         let packed_n_vars = chunks.packed_n_vars;
 
         // WHIR commit does reorder_and_dft(..., folding_factor_0, starting_log_inv_rate) and needs twiddles
@@ -134,7 +181,9 @@ impl AirSnarkPreprocessing {
             n_columns_f,
             log_smallest_decomposition_chunk: config.log_smallest_decomposition_chunk,
             univariate_skips: config.univariate_skips,
+            security_bits: config.security_bits,
             whir_params: WhirParamsSerde::from(&config.whir_config_builder),
+            dims_f: layout.dims_f.iter().map(ColDimsSerde::from).collect(),
             packed_n_vars,
             required_dft_twiddles_n,
             n_constraints: air.n_constraints(),
@@ -151,10 +200,20 @@ impl AirSnarkPreprocessing {
 
     /// Convert preprocessing into a runtime config.
     pub fn to_config(&self) -> AirSnarkConfig {
+        let whir_config_builder = whir_p3::WhirConfigBuilder::from(&self.whir_params);
         AirSnarkConfig {
             univariate_skips: self.univariate_skips,
             log_smallest_decomposition_chunk: self.log_smallest_decomposition_chunk,
-            whir_config_builder: whir_p3::WhirConfigBuilder::from(&self.whir_params),
+            security_bits: self.security_bits,
+            whir_config_builder,
+        }
+    }
+
+    /// Reconstruct the trace layout metadata (without the actual public data values).
+    pub fn to_layout<PF: p3_field::PrimeField64>(&self) -> AirSnarkTraceLayout<PF> {
+        AirSnarkTraceLayout {
+            dims_f: self.dims_f.iter().map(|d| d.to_coldims::<PF>()).collect(),
+            public_data_f: Default::default(),
         }
     }
 
@@ -163,4 +222,3 @@ impl AirSnarkPreprocessing {
         whir_p3::precompute_dft_twiddles::<F>(self.required_dft_twiddles_n);
     }
 }
-

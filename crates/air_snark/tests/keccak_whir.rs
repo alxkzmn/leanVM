@@ -1,7 +1,7 @@
 use core::mem::transmute;
 
 use air::keccak_air::{KeccakAirOptimizedDown, KeccakCols, NUM_KECCAK_COLS, NUM_ROUNDS, U64_LIMBS};
-use air_snark::{prove_single_air_with_whir, verify_single_air_with_whir, AirSnarkConfig};
+use air_snark::{prove_single_air_with_whir, verify_single_air_with_whir, AirSnarkConfig, AirSnarkTraceLayout};
 use multilinear_toolkit::prelude::*;
 use p3_field::PrimeField64;
 use p3_koala_bear::{KoalaBear, QuinticExtensionFieldKB};
@@ -181,8 +181,10 @@ fn test_keccak_air_snark_with_whir() {
     let config = AirSnarkConfig {
         univariate_skips: UNIVARIATE_SKIPS,
         log_smallest_decomposition_chunk: LOG_SMALLEST_DECOMPOSITION_CHUNK,
+        security_bits: 128,
         whir_config_builder: whir_config_builder(),
     };
+    let layout = AirSnarkTraceLayout::all_committed(log_n_rows, NUM_KECCAK_COLS);
 
     let prover_state = utils::build_prover_state::<EF>(false);
     let proof = prove_single_air_with_whir(
@@ -190,6 +192,7 @@ fn test_keccak_air_snark_with_whir() {
         &air,
         vec![],
         &config,
+        &layout,
         &columns_ref_f,
         &[] as &[&[EF]],
         &last_row_shifted_f,
@@ -197,7 +200,7 @@ fn test_keccak_air_snark_with_whir() {
     );
 
     let mut verifier_state: FSVerifier<EF, _> = VerifierState::new(proof, build_challenger());
-    verify_single_air_with_whir(&mut verifier_state, &air, vec![], &config).unwrap();
+    verify_single_air_with_whir(&mut verifier_state, &air, vec![], &config, &layout).unwrap();
 }
 
 

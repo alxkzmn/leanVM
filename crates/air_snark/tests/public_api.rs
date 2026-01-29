@@ -1,4 +1,4 @@
-use air_snark::{AirSnarkConfig, prove_single_air_with_whir_base, verify_single_air_with_whir_base};
+use air_snark::{AirSnarkConfig, AirSnarkTraceLayout, prove_single_air_with_whir_base, verify_single_air_with_whir_base};
 use multilinear_toolkit::prelude::*;
 use p3_air::{Air, AirBuilder};
 use p3_koala_bear::{KoalaBear, QuinticExtensionFieldKB};
@@ -74,8 +74,10 @@ fn test_public_api_smoke() {
     let config = AirSnarkConfig {
         univariate_skips: 3,
         log_smallest_decomposition_chunk: 12,
+        security_bits: 128,
         whir_config_builder: whir_config_builder(),
     };
+    let layout = AirSnarkTraceLayout::all_committed(log_n_rows, air.n_columns_f_air());
 
     let prover_state = air_snark::build_prover_state::<EF>(false);
     let proof = prove_single_air_with_whir_base(
@@ -83,11 +85,12 @@ fn test_public_api_smoke() {
         &air,
         vec![],
         &config,
+        &layout,
         &columns_f,
         &last_row_shifted_f,
     );
 
     let mut verifier_state = VerifierState::new(proof, air_snark::build_challenger());
-    verify_single_air_with_whir_base(&mut verifier_state, &air, vec![], &config).unwrap();
+    verify_single_air_with_whir_base(&mut verifier_state, &air, vec![], &config, &layout).unwrap();
 }
 

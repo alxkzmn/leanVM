@@ -52,6 +52,7 @@ fn test_preprocessing_roundtrip() {
     let cfg = AirSnarkConfig {
         univariate_skips: 3,
         log_smallest_decomposition_chunk: 12,
+        security_bits: 128,
         whir_config_builder: whir_config_builder(),
     };
 
