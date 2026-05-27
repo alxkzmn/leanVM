@@ -532,6 +532,7 @@ dependencies = [
  "rand",
  "rec_aggregation",
  "serde",
+ "serde_json",
  "sub_protocols",
  "tracing",
  "utils",
