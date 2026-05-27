@@ -237,6 +237,19 @@ def main():
 }
 
 #[test]
+fn test_reject_dead_code_after_return() {
+    let program = r#"
+def main():
+    x = 1
+    return
+    assert x == 0
+    return
+"#;
+    let res = try_compile_program(&ProgramSource::Raw(program.to_string()));
+    assert!(res.is_err(), "code after `return` must be rejected at compile time");
+}
+
+#[test]
 #[rustfmt::skip]
 fn test_soundness_suite() {
     #[allow(clippy::type_complexity)]

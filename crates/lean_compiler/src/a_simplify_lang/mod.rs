@@ -275,8 +275,30 @@ fn ends_with_early_exit(block: &[SimpleLine]) -> bool {
     }
 }
 
+fn check_no_dead_code(body: &[Line], function_name: &str) -> Result<(), String> {
+    for (i, line) in body.iter().enumerate() {
+        let exit_kind = match line {
+            Line::FunctionRet { .. } => Some("return"),
+            Line::Panic { .. } => Some("panic"),
+            _ => None,
+        };
+        if let Some(kind) = exit_kind
+            && i + 1 < body.len()
+        {
+            return Err(format!("function `{function_name}`: unreachable code after `{kind}`"));
+        }
+        for nested in line.nested_blocks() {
+            check_no_dead_code(nested, function_name)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn simplify_program(mut program: Program) -> Result<SimpleProgram, String> {
     check_program_scoping(&program);
+    for (name, func) in &program.functions {
+        check_no_dead_code(&func.body, name)?;
+    }
 
     let mut unroll_counter = Counter::new();
     let mut inline_counter = Counter::new();
