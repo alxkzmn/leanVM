@@ -2496,7 +2496,14 @@ fn simplify_expr(
 
             let versioned_array = array_var_name.map(|n| state.mut_tracker.current_name(n));
 
-            assert_eq!(index.len(), 1);
+            if index.len() != 1 {
+                return Err(format!(
+                    "Multidimensional indexing is only supported on compile-time const arrays; \
+                     `{}[..][..]` has {} indices",
+                    array_var_name.unwrap_or(&"<expr>".to_string()),
+                    index.len(),
+                ));
+            }
             let index = index[0].clone();
 
             if let Some(name) = array_var_name
