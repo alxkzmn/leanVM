@@ -537,7 +537,7 @@ fn compile_time_transform_in_lines(
                         && !existing_functions.contains_key(&const_funct_name)
                     {
                         let mut new_body = func.body.clone();
-                        replace_vars_by_const_in_lines(&mut new_body, &const_evals.iter().cloned().collect());
+                        replace_vars_by_const_in_lines(&mut new_body, &const_evals.iter().cloned().collect())?;
                         new_functions.insert(
                             const_funct_name.clone(),
                             Function {
@@ -3072,7 +3072,7 @@ fn replace_vars_for_unroll(
     transform_vars_in_lines(lines, &transform);
 }
 
-fn replace_vars_by_const_in_expr(expr: &mut Expression, map: &BTreeMap<Var, F>) {
+fn replace_vars_by_const_in_expr(expr: &mut Expression, map: &BTreeMap<Var, F>) -> Result<(), String> {
     match expr {
         Expression::Value(value) => match &value {
             SimpleExpr::Memory(VarOrConstMallocAccess::Var(var)) => {
@@ -3086,51 +3086,59 @@ fn replace_vars_by_const_in_expr(expr: &mut Expression, map: &BTreeMap<Var, F>) 
             SimpleExpr::Constant(_) => {}
         },
         Expression::ArrayAccess { array, index } => {
-            if let Some(name) = array.as_var() {
-                assert!(!map.contains_key(name), "Array {name} is a constant");
+            if let Some(name) = array.as_var()
+                && map.contains_key(name)
+            {
+                return Err(format!("Array {name} is a constant"));
             }
             for index in index {
-                replace_vars_by_const_in_expr(index, map);
+                replace_vars_by_const_in_expr(index, map)?;
             }
         }
         Expression::MathExpr(_, args) => {
             for arg in args {
-                replace_vars_by_const_in_expr(arg, map);
+                replace_vars_by_const_in_expr(arg, map)?;
             }
         }
         Expression::FunctionCall { args, .. } => {
             for arg in args {
-                replace_vars_by_const_in_expr(arg, map);
+                replace_vars_by_const_in_expr(arg, map)?;
             }
         }
         Expression::Len { indices, .. } => {
             for idx in indices {
-                replace_vars_by_const_in_expr(idx, map);
+                replace_vars_by_const_in_expr(idx, map)?;
             }
         }
         Expression::Lambda { body, .. } => {
-            replace_vars_by_const_in_expr(body, map);
+            replace_vars_by_const_in_expr(body, map)?;
         }
         Expression::HintWitness { .. } => {}
     }
+    Ok(())
 }
 
-fn replace_vars_by_const_in_lines(lines: &mut [Line], map: &BTreeMap<Var, F>) {
+fn replace_vars_by_const_in_lines(lines: &mut [Line], map: &BTreeMap<Var, F>) -> Result<(), String> {
     for line in lines {
-        // Debug: assert target vars are not const-replaced
         match line {
             Line::ForwardDeclaration { var, .. } => {
-                assert!(!map.contains_key(var), "Variable {var} is a constant");
+                if map.contains_key(var) {
+                    return Err(format!("Variable {var} is a constant"));
+                }
             }
             Line::Statement { targets, .. } => {
                 for target in targets.iter() {
                     match target {
                         AssignmentTarget::Var { var, .. } => {
-                            assert!(!map.contains_key(var), "Variable {var} is a constant");
+                            if map.contains_key(var) {
+                                return Err(format!("Variable {var} is a constant"));
+                            }
                         }
                         AssignmentTarget::ArrayAccess { array, .. } => {
-                            if let Some(name) = array.as_var() {
-                                assert!(!map.contains_key(name), "Array {name} is a constant");
+                            if let Some(name) = array.as_var()
+                                && map.contains_key(name)
+                            {
+                                return Err(format!("Array {name} is a constant"));
                             }
                         }
                     }
@@ -3139,12 +3147,13 @@ fn replace_vars_by_const_in_lines(lines: &mut [Line], map: &BTreeMap<Var, F>) {
             _ => {}
         }
         for expr in line.expressions_mut() {
-            replace_vars_by_const_in_expr(expr, map);
+            replace_vars_by_const_in_expr(expr, map)?;
         }
         for block in line.nested_blocks_mut() {
-            replace_vars_by_const_in_lines(block, map);
+            replace_vars_by_const_in_lines(block, map)?;
         }
     }
+    Ok(())
 }
 
 impl Display for SimpleLine {
