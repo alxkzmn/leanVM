@@ -68,7 +68,7 @@ impl Parse<Function> for FunctionParser {
             return Err(SemanticError::new(format!("Cannot define function with reserved name '{name}'")).into());
         }
 
-        let mut arguments = Vec::new();
+        let mut arguments: Vec<FunctionArg> = Vec::new();
         let mut body = Vec::new();
 
         for pair in inner {
@@ -76,7 +76,15 @@ impl Parse<Function> for FunctionParser {
                 Rule::parameter_list => {
                     for param in pair.into_inner() {
                         if param.as_rule() == Rule::parameter {
-                            arguments.push(ParameterParser.parse(param, ctx)?);
+                            let arg = ParameterParser.parse(param, ctx)?;
+                            if arguments.iter().any(|a| a.name == arg.name) {
+                                return Err(SemanticError::new(format!(
+                                    "Function '{name}': duplicate parameter name '{}'",
+                                    arg.name,
+                                ))
+                                .into());
+                            }
+                            arguments.push(arg);
                         }
                     }
                 }
