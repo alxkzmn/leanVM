@@ -62,8 +62,10 @@ impl<'de> Deserialize<'de> for TypeOneInfo {
         if bytecode_claim_point.len() != get_aggregation_bytecode().cumulated_n_vars() {
             return Err(serde::de::Error::custom("invalid bytecode point"));
         }
-        if !pubkeys.is_sorted() {
-            return Err(serde::de::Error::custom("unsorted pubkeys"));
+        if !pubkeys.windows(2).all(|w| w[0] < w[1]) {
+            return Err(serde::de::Error::custom(
+                "pubkeys must be strictly sorted (no duplicates)",
+            ));
         }
         let bytecode_value = compute_bytecode_value_at(&bytecode_claim_point);
         Ok(Self {
@@ -192,7 +194,9 @@ fn encode_wots_signature(sig: &XmssSignature) -> Vec<F> {
 
 // assumes `bytecode_value` in TypeOneMultiSignature::proof is correct (it should not be read / deserialized from an untrusted source)
 pub fn verify_type_1(sig: &TypeOneMultiSignature) -> Result<InnerVerified, ProofError> {
-    if !sig.info.pubkeys.is_sorted() {
+    // Strictly sorted: rejects duplicate pubkeys so one XMSS signer cannot be
+    // counted twice in the aggregate (see duplicate-type1-pubkeys.md).
+    if !sig.info.pubkeys.windows(2).all(|w| w[0] < w[1]) {
         return Err(ProofError::InvalidProof);
     }
     verify_inner(sig.info.build_input_data(), sig.proof.proof.clone())
