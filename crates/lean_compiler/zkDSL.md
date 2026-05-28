@@ -390,7 +390,9 @@ a compile error.
 
 ### Arithmetic
 
-`+`, `-`, `*`, `/` are field operations and work at runtime.
+`+`, `-`, `*`, `/` are field operations and work at runtime, modulo `p = 2^31 - 2^24 + 1` (koalabear prime).
+
+**Division by zero is undefined behaviour.**
 
 `%` (modulo) and `**` (exponentiation) are **compile-time only** — both operands
 must be constants known at compile time.
