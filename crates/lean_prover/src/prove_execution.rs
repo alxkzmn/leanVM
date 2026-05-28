@@ -82,7 +82,7 @@ pub fn prove_execution(
 
     // TODO parrallelize
     let mut memory_acc = F::zero_vec(memory.len());
-    info_span!("Building memory access count").in_scope(|| {
+    info_span!("Building memory access count").in_scope(|| -> Result<(), ProverError> {
         for (table, trace) in &traces {
             let buses = table.bus_interactions();
             for group in memory_lookup_groups(&buses) {
@@ -90,21 +90,24 @@ pub fn prove_execution(
                 let n = group.value_cols.len();
                 for idx in idx_col {
                     let base = idx.to_usize();
-                    for ofs in 0..n {
-                        memory_acc[base + ofs] += F::ONE;
+                    let cells = memory_acc.get_mut(base..base + n).ok_or(RunnerError::OutOfMemory)?;
+                    for cell in cells {
+                        *cell += F::ONE;
                     }
                 }
             }
         }
-    });
+        Ok(())
+    })?;
 
     // // TODO parrallelize
     let mut bytecode_acc = F::zero_vec(bytecode.padded_size());
-    info_span!("Building bytecode access count").in_scope(|| {
+    info_span!("Building bytecode access count").in_scope(|| -> Result<(), ProverError> {
         for pc in traces[&Table::execution()].columns[EXEC_COL_PC].iter() {
-            bytecode_acc[pc.to_usize()] += F::ONE;
+            *bytecode_acc.get_mut(pc.to_usize()).ok_or(RunnerError::PCOutOfBounds)? += F::ONE;
         }
-    });
+        Ok(())
+    })?;
 
     // 1st Commitment
     let stacked_pcs_witness = stack_polynomials_and_commit(
