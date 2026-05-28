@@ -104,6 +104,9 @@ impl<Data: Clone, F: Clone> PrunedMerklePaths<Data, F> {
         if self.leaf_data.len() != n {
             return None;
         }
+        if self.paths.windows(2).any(|w| w[0].0 >= w[1].0) {
+            return None;
+        }
         self.leaf_data
             .iter_mut()
             .for_each(|d| d.resize(d.len() + self.n_trailing_zeros, Data::default()));
@@ -422,6 +425,29 @@ mod tests {
         assert_eq!(restored.0[1].leaf_index, 1);
         assert_eq!(restored.0[3].leaf_index, 1);
         assert_eq!(restored.0[1].sibling_hashes, restored.0[3].sibling_hashes);
+    }
+
+    #[test]
+    fn test_restore_rejects_non_increasing_indices() {
+        // Adjacent duplicate indices would underflow `lca_level(..) - 1`; restoration must reject.
+        let duplicate = PrunedMerklePaths::<u8, u8> {
+            merkle_height: 3,
+            original_order: vec![0, 1],
+            leaf_data: vec![vec![0], vec![0]],
+            paths: vec![(0, vec![]), (0, vec![])],
+            n_trailing_zeros: 0,
+        };
+        assert!(duplicate.restore(&simple_hash, &hash_combine).is_none());
+
+        // Unsorted (decreasing) adjacent indices must also be rejected.
+        let unsorted = PrunedMerklePaths::<u8, u8> {
+            merkle_height: 3,
+            original_order: vec![0, 1],
+            leaf_data: vec![vec![0], vec![0]],
+            paths: vec![(3, vec![]), (1, vec![])],
+            n_trailing_zeros: 0,
+        };
+        assert!(unsorted.restore(&simple_hash, &hash_combine).is_none());
     }
 
     #[test]
