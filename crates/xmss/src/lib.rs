@@ -22,6 +22,7 @@ pub const W: usize = 3;
 pub const CHAIN_LENGTH: usize = 1 << W;
 pub const NUM_CHAIN_HASHES: usize = 110;
 pub const TARGET_SUM: usize = V * (CHAIN_LENGTH - 1) - NUM_CHAIN_HASHES;
+pub const NUM_ENCODING_FE: usize = V.div_ceil(24 / W);
 pub const RANDOMNESS_LEN_FE: usize = 6;
 pub const MESSAGE_LEN_FE: usize = 8;
 pub const PUBLIC_PARAM_LEN_FE: usize = 4;

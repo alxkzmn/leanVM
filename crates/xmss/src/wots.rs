@@ -165,11 +165,11 @@ pub fn wots_encode(
     second_input_right[..PUBLIC_PARAM_LEN_FE].copy_from_slice(&xmss_pub_key.public_param);
     let compressed = poseidon16_compress_pair(&pre_compressed, &second_input_right);
 
-    if compressed.iter().any(|&kb| kb == -F::ONE) {
+    if compressed[..NUM_ENCODING_FE].iter().any(|&kb| kb == -F::ONE) {
         // ensures uniformity of encoding
         return None;
     }
-    let all_indices: Vec<_> = compressed
+    let all_indices: Vec<_> = compressed[..NUM_ENCODING_FE]
         .iter()
         .flat_map(|kb| to_little_endian_bits(kb.to_usize(), 24))
         .collect::<Vec<_>>()
