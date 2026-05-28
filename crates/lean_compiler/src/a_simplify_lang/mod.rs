@@ -469,7 +469,7 @@ fn compile_time_transform_in_lines(
 
         for expr in line.expressions_mut() {
             substitute_const_vars_in_expr(expr, &const_var_exprs);
-            compile_time_transform_in_expr(expr, const_arrays);
+            compile_time_transform_in_expr(expr, const_arrays)?;
         }
 
         // Extract nested calls to functions requiring preprocessing (inlined or const-arg)
@@ -907,19 +907,26 @@ fn extract_preprocessed_calls(
     }
 }
 
-fn compile_time_transform_in_expr(expr: &mut Expression, const_arrays: &BTreeMap<String, ConstArrayValue>) -> bool {
+fn compile_time_transform_in_expr(
+    expr: &mut Expression,
+    const_arrays: &BTreeMap<String, ConstArrayValue>,
+) -> Result<bool, String> {
     if expr.is_scalar() {
-        return false;
+        return Ok(false);
     }
     let mut changed = false;
     for inner_expr in expr.inner_exprs_mut() {
-        changed |= compile_time_transform_in_expr(inner_expr, const_arrays);
+        changed |= compile_time_transform_in_expr(inner_expr, const_arrays)?;
     }
     if let Some(scalar) = expr.compile_time_eval(const_arrays) {
         *expr = Expression::scalar(scalar);
         changed = true;
+    } else if let Expression::MathExpr(op, args) = &*expr
+        && args.iter().all(Expression::is_scalar)
+    {
+        return Err(format!("compile-time `{op}` failed"));
     }
-    changed
+    Ok(changed)
 }
 
 fn substitute_const_vars_in_expr(expr: &mut Expression, const_var_exprs: &BTreeMap<Var, F>) -> bool {
