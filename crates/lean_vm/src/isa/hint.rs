@@ -1,9 +1,9 @@
-use crate::MIN_LOG_MEMORY_SIZE;
 use crate::core::{F, Label, SourceLocation};
 use crate::diagnostics::RunnerError;
 use crate::execution::ExecutionHistory;
 use crate::execution::memory::MemoryAccess;
 use crate::isa::operands::{MemOrConstant, MemOrFpOrConstant};
+use crate::{MAX_LOG_MEMORY_SIZE, MIN_LOG_MEMORY_SIZE};
 use backend::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -299,6 +299,9 @@ impl Hint {
                 let size = size.read_value(ctx.memory, ctx.fp)?.to_usize();
 
                 let allocation_start_addr = *ctx.ap;
+                if allocation_start_addr + size > 1 << MAX_LOG_MEMORY_SIZE {
+                    return Err(RunnerError::OutOfMemory);
+                }
                 ctx.memory.set(ctx.fp + *offset, F::from_usize(allocation_start_addr))?;
                 *ctx.ap += size;
             }
