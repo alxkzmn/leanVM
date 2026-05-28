@@ -142,6 +142,9 @@ impl<Data: Clone, F: Clone> PrunedMerklePaths<Data, F> {
                 };
                 subtree_hashes[i].push(hash.clone());
             }
+            if stored.next().is_some() {
+                return None;
+            }
         }
 
         // Forward pass: build full sibling arrays
