@@ -368,8 +368,10 @@ impl Expression {
                 .map(|e| e.compile_time_eval(const_arrays))
                 .collect::<Option<Vec<F>>>()?;
             let arr = const_arrays.get(array)?;
-            let target = arr.navigate(&idx)?;
-            return Some(F::from_usize(target.len()));
+            return match arr.navigate(&idx)? {
+                ConstArrayValue::Array(elems) => Some(F::from_usize(elems.len())),
+                ConstArrayValue::Scalar(_) => None, // len() of a scalar is undefined
+            };
         }
         self.eval_with(
             &|value: &SimpleExpr| value.as_constant()?.naive_eval(),

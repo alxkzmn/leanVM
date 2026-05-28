@@ -921,6 +921,8 @@ fn compile_time_transform_in_expr(
     if let Some(scalar) = expr.compile_time_eval(const_arrays) {
         *expr = Expression::scalar(scalar);
         changed = true;
+    } else if let Expression::Len { .. } = &*expr {
+        return Err("Cannot call len() on a scalar value".to_string());
     } else if let Expression::MathExpr(op, args) = &*expr
         && args.iter().all(Expression::is_scalar)
     {
