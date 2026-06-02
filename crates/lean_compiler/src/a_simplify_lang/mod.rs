@@ -14,6 +14,12 @@ use utils::{Counter, ToUsize};
 
 mod post_optimization;
 
+/*
+KNOWN LIMITATIONS:
+
+- inline function recursively calling themselves (directly or indirectly) will cause the compiler to run indifinetely (and crash OOM)
+*/
+
 const MAX_UNROLL_ITERATIONS: usize = 1 << 20;
 
 #[derive(Debug, Clone)]
