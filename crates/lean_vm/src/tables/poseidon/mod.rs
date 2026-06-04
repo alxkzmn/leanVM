@@ -113,7 +113,7 @@ pub const POSEIDON_COL_OUT_HI: ColIndex = num_cols_poseidon_16() - 8;
 pub const POSEIDON_COL_NU_A: ColIndex = num_cols_poseidon_16();
 pub const POSEIDON_COL_DOMAINSEP: ColIndex = num_cols_poseidon_16() + 1;
 
-pub const POSEIDON16_NAME: &str = "poseidon16_compress_half";
+pub const POSEIDON16_COMPRESS_HALF_NAME: &str = "poseidon16_compress_half";
 pub const POSEIDON16_QUARTER_NAME: &str = "poseidon16_compress_quarter";
 pub const POSEIDON16_HARDCODED_LEFT_NAME: &str = "poseidon16_compress_half_hardcoded_left";
 pub const POSEIDON16_QUARTER_HARDCODED_LEFT_NAME: &str = "poseidon16_compress_quarter_hardcoded_left";
@@ -121,7 +121,7 @@ pub const POSEIDON16_PERMUTE_NAME: &str = "poseidon16_permute";
 pub const POSEIDON16_PERMUTE_HALF_NAME: &str = "poseidon16_permute_half";
 pub const POSEIDON16_PERMUTE_HALF_HARDCODED_LEFT_NAME: &str = "poseidon16_permute_half_hardcoded_left";
 pub const ALL_POSEIDON16_NAMES: [&str; 7] = [
-    POSEIDON16_NAME,
+    POSEIDON16_COMPRESS_HALF_NAME,
     POSEIDON16_QUARTER_NAME,
     POSEIDON16_HARDCODED_LEFT_NAME,
     POSEIDON16_QUARTER_HARDCODED_LEFT_NAME,
@@ -136,7 +136,7 @@ pub struct Poseidon16Precompile<const BUS: bool>;
 
 impl<const BUS: bool> TableT for Poseidon16Precompile<BUS> {
     fn name(&self) -> &'static str {
-        POSEIDON16_NAME
+        "poseidon16"
     }
 
     fn table(&self) -> Table {
