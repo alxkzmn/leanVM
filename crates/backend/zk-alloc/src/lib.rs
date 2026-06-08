@@ -70,6 +70,13 @@ fn ensure_region() -> usize {
 
 /// Opt into the arena (once, at startup). Until then phases are inert and `ArenaVec` uses System.
 pub fn enable_arena() {
+    #[cfg(target_os = "linux")]
+    unsafe {
+        // Disable heap trimming, so freed memory is kept rather than returned to the OS
+        libc::mallopt(libc::M_TRIM_THRESHOLD, -1);
+        // Disable mmap for large allocations, routing everything through the heap instead
+        libc::mallopt(libc::M_MMAP_MAX, 0);
+    }
     ARENA_ENGAGED.store(true, Ordering::Release);
 }
 
