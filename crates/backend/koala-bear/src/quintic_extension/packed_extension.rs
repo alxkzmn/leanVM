@@ -10,7 +10,6 @@ use field::{
     Algebra, BasedVectorSpace, Field, PackedField, PackedFieldExtension, PackedValue, Powers, PrimeCharacteristicRing,
     field_to_array,
 };
-use itertools::Itertools;
 use rand::distr::{Distribution, StandardUniform};
 use serde::{Deserialize, Serialize};
 use utils::{flatten_to_base, reconstitute_from_base};
@@ -260,7 +259,7 @@ where
     #[inline]
     fn packed_ext_powers(base: QuinticExtensionField<F>) -> field::Powers<Self> {
         let width = F::Packing::WIDTH;
-        let powers = base.powers().take(width + 1).collect_vec();
+        let powers = base.powers().take(width + 1).collect();
         // Transpose first WIDTH powers
         let current = Self::from_ext_slice(&powers[..width]);
 

@@ -86,12 +86,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "autocfg"
-version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
-
-[[package]]
 name = "backend"
 version = "0.1.0"
 dependencies = [
@@ -104,7 +98,6 @@ dependencies = [
  "mt-symetric",
  "mt-whir",
  "parallel",
- "tracing",
  "utils",
  "zk-alloc",
 ]
@@ -282,12 +275,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "either"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
-
-[[package]]
 name = "embedded-io"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -432,15 +419,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -469,7 +447,6 @@ dependencies = [
  "backend",
  "clap",
  "lean_vm",
- "libc",
  "rand",
  "rec_aggregation",
  "serde_json",
@@ -490,7 +467,6 @@ dependencies = [
  "pest_derive",
  "rand",
  "sub_protocols",
- "tracing",
  "xmss",
 ]
 
@@ -499,11 +475,8 @@ name = "lean_prover"
 version = "0.1.0"
 dependencies = [
  "backend",
- "itertools",
  "lean_compiler",
  "lean_vm",
- "pest",
- "pest_derive",
  "rand",
  "rec_aggregation",
  "serde",
@@ -518,10 +491,6 @@ name = "lean_vm"
 version = "0.1.0"
 dependencies = [
  "backend",
- "itertools",
- "pest",
- "pest_derive",
- "rand",
  "tracing",
  "xmss",
 ]
@@ -594,7 +563,6 @@ dependencies = [
  "mt-symetric",
  "parallel",
  "serde",
- "tracing",
  "utils",
 ]
 
@@ -602,13 +570,10 @@ dependencies = [
 name = "mt-field"
 version = "0.1.0"
 dependencies = [
- "itertools",
- "num-bigint",
  "parallel",
  "paste",
  "rand",
  "serde",
- "tracing",
  "utils",
 ]
 
@@ -616,13 +581,10 @@ dependencies = [
 name = "mt-koala-bear"
 version = "0.1.0"
 dependencies = [
- "itertools",
  "mt-field",
- "num-bigint",
  "paste",
  "rand",
  "serde",
- "tracing",
  "utils",
 ]
 
@@ -630,7 +592,6 @@ dependencies = [
 name = "mt-poly"
 version = "0.1.0"
 dependencies = [
- "itertools",
  "mt-field",
  "mt-koala-bear",
  "parallel",
@@ -669,7 +630,6 @@ dependencies = [
 name = "mt-whir"
 version = "0.1.0"
 dependencies = [
- "itertools",
  "mt-fiat-shamir",
  "mt-field",
  "mt-koala-bear",
@@ -693,34 +653,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
  "windows-sys",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
-dependencies = [
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-integer"
-version = "0.1.46"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "num-traits"
-version = "0.2.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
-dependencies = [
- "autocfg",
 ]
 
 [[package]]
@@ -899,7 +831,6 @@ dependencies = [
  "objc2",
  "objc2-foundation",
  "postcard",
- "rand",
  "serde",
  "sub_protocols",
  "tracing",
@@ -1217,9 +1148,7 @@ name = "utils"
 version = "0.1.0"
 dependencies = [
  "parallel",
- "rand",
  "serde",
- "tracing",
  "tracing-forest",
  "tracing-subscriber",
 ]

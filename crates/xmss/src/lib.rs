@@ -1,6 +1,5 @@
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
-use backend::PrimeCharacteristicRing;
-use backend::{DIGEST_LEN_FE, KoalaBear, POSEIDON1_WIDTH};
+use backend::{DIGEST_LEN_FE, KoalaBear, POSEIDON1_WIDTH, PrimeCharacteristicRing, PrimeField32, RATE, poseidon_hash_slice};
 
 pub mod signers_cache;
 mod wots;

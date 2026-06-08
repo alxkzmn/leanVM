@@ -27,7 +27,6 @@ use std::sync::RwLock;
 
 use field::PackedValue;
 use field::{BasedVectorSpace, Field, PackedField, TwoAdicField};
-use itertools::Itertools;
 use zk_alloc::ArenaVec;
 
 use crate::utils::{flatten_to_base_arena, reconstitute_from_base_arena};
@@ -129,12 +128,10 @@ where
 
         // We do `LAYERS_PER_GROUP` layers of the DFT at once, to minimize how much data we need to transfer
         // between threads.
-        for (twiddles_small, twiddles_med, twiddles_large) in root_table[..root_table.len() - log_num_par_rows - corr]
-            .iter()
-            .rev()
-            .map(|slice| unsafe { as_base_slice::<EvalsButterfly<F>, F>(slice) })
-            .tuples()
-        {
+        for chunk in root_table[..root_table.len() - log_num_par_rows - corr].rchunks_exact(LAYERS_PER_GROUP) {
+            let twiddles_small = unsafe { as_base_slice::<EvalsButterfly<F>, F>(&chunk[2]) };
+            let twiddles_med = unsafe { as_base_slice::<EvalsButterfly<F>, F>(&chunk[1]) };
+            let twiddles_large = unsafe { as_base_slice::<EvalsButterfly<F>, F>(&chunk[0]) };
             dft_layer_par_triple(
                 &mut mat.as_view_mut(),
                 twiddles_small,

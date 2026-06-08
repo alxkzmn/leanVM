@@ -11,7 +11,6 @@ field = { path = "field", package = "mt-field" }
 air = { path = "air", package = "mt-air" }
 parallel.workspace = true
 whir = { path = "../whir", package = "mt-whir" }
-tracing.workspace = true
 fiat-shamir = { path = "fiat-shamir", package = "mt-fiat-shamir" }
 koala-bear = { path = "koala-bear", package = "mt-koala-bear" }
 utils = { path = "utils", package = "utils" }

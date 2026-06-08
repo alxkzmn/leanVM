@@ -8,7 +8,6 @@ use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use core::{array, slice};
 
-use num_bigint::BigUint;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use utils::{flatten_to_base, iter_array_chunks_padded};
@@ -808,22 +807,13 @@ pub trait Field:
         }
     }
 
-    /// The number of elements in the field.
-    ///
-    /// This will either be prime if the field is a PrimeField or a power of a
-    /// prime if the field is an extension field.
-    #[must_use]
-    fn order() -> BigUint;
-
     /// The number of bits required to define an element of this field.
     ///
-    /// Usually due to storage and practical reasons the memory size of
-    /// a field element will be a little larger than bits().
+    /// For a field of order `q` this is `ceil(log2(q))`.
+    /// Usually due to storage and practical reasons the memory
+    /// size of a field element will be a little larger than `bits()`.
     #[must_use]
-    #[inline]
-    fn bits() -> usize {
-        Self::order().bits() as usize
-    }
+    fn bits() -> usize;
 }
 
 /// A field isomorphic to `ℤ/p` for some prime `p`.
@@ -848,10 +838,6 @@ pub trait PrimeField:
     + QuotientMap<i128>
     + QuotientMap<isize>
 {
-    /// Return the representative of `value` in canonical form
-    /// which lies in the range `0 <= x < self.order()`.
-    #[must_use]
-    fn as_canonical_biguint(&self) -> BigUint;
 }
 
 /// A prime field `ℤ/p` with order, `p < 2^64`.

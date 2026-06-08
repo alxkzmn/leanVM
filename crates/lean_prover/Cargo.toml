@@ -10,8 +10,6 @@ workspace = true
 prox-gaps-conjecture = []
 
 [dependencies]
-pest.workspace = true
-pest_derive.workspace = true
 xmss.workspace = true
 rand.workspace = true
 tracing.workspace = true
@@ -19,7 +17,6 @@ sub_protocols.workspace = true
 lean_vm.workspace = true
 lean_compiler.workspace = true
 backend.workspace = true
-itertools.workspace = true
 serde.workspace = true
 
 [dev-dependencies]

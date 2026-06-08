@@ -2,7 +2,6 @@ use crate::*;
 use crate::{EFPacking, PF};
 use ::utils::log2_ceil_usize;
 use field::{ExtensionField, Field, PrimeCharacteristicRing};
-use itertools::Itertools;
 use zk_alloc::ArenaVec;
 pub trait EvaluationsList<F: Field> {
     fn num_variables(&self) -> usize;
@@ -255,7 +254,7 @@ where
                             // This is the inner sum: a dot product between the evaluation chunk and the `left` basis values.
                             mul_res_point(
                                 part.iter()
-                                    .zip_eq(left.iter())
+                                    .zip(left.iter())
                                     .map(|(&a, &b)| mul_coeffs_point(a, b))
                                     .sum::<Res>(),
                                 right[i],
@@ -266,12 +265,12 @@ where
                 } else {
                     evals
                         .chunks(left.len())
-                        .zip_eq(right.iter())
+                        .zip(right.iter())
                         .map(|(part, &c)| {
                             // This is the inner sum: a dot product between the evaluation chunk and the `left` basis values.
                             mul_res_point(
                                 part.iter()
-                                    .zip_eq(left.iter())
+                                    .zip(left.iter())
                                     .map(|(&a, &b)| mul_coeffs_point(a, b))
                                     .sum::<Res>(),
                                 c,
