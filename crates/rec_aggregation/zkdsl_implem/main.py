@@ -190,7 +190,7 @@ def main():
 
         running_hash: Mut = build_iv(n_sub * PUB_KEY_SIZE)
         n_first = n_sub - 1
-        n_chunks, remainder = euclidian_div_runtime(n_first, PARTIAL_UNROLL_BATCH)
+        n_chunks, remainder = euclidean_div_runtime(n_first, PARTIAL_UNROLL_BATCH)
         pubkey_idx: Mut = 0
         inner_carry = Array((n_chunks + 1) * 3)
         inner_carry[0] = counter
@@ -299,7 +299,7 @@ def reduce_bytecode_claims(bytecode_claims, n_bytecode_claims, bytecode_claim_ou
     all_values = Array(n_bytecode_claims * DIM)
     for i in range(0, n_bytecode_claims):
         claim_ptr = bytecode_claims[i]
-        copy_5(claim_ptr + BYTECODE_POINT_N_VARS * DIM, all_values + i * DIM)
+        copy_ef(claim_ptr + BYTECODE_POINT_N_VARS * DIM, all_values + i * DIM)
 
     claimed_sum = Array(DIM)
     dot_product_ee_dynamic(all_values, alpha_powers, claimed_sum, n_bytecode_claims)
@@ -316,7 +316,7 @@ def reduce_bytecode_claims(bytecode_claims, n_bytecode_claims, bytecode_claim_ou
     bytecode_value_at_r = div_extension_ret(final_eval, w_r)
 
     copy_many_ef(challenges, bytecode_claim_output, BYTECODE_POINT_N_VARS)
-    copy_5(bytecode_value_at_r, bytecode_claim_output + BYTECODE_POINT_N_VARS * DIM)
+    copy_ef(bytecode_value_at_r, bytecode_claim_output + BYTECODE_POINT_N_VARS * DIM)
     return
 
 

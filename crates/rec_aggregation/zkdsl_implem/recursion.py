@@ -28,14 +28,12 @@ NUM_COLS_AIR = NUM_COLS_AIR_PLACEHOLDER
 MAX_NUM_COLS_AIR = MAX_NUM_COLS_AIR_PLACEHOLDER  # max(NUM_COLS_AIR[t] for t in 0..N_TABLES)
 ONE_BUSES_ALL_COLS = ONE_BUSES_ALL_COLS_PLACEHOLDER  # [[col, ...], _; N_TABLES] — sorted union of cols across all Multiplicity::One buses per table
 
-AIR_DEGREES = AIR_DEGREES_PLACEHOLDER  # [_; N_TABLES]
 MAX_AIR_FULL_DEGREE = MAX_AIR_FULL_DEGREE_PLACEHOLDER
 N_AIR_COLUMNS = N_AIR_COLUMNS_PLACEHOLDER  # [_; N_TABLES]
 N_AIR_SHIFT_COLUMNS = N_AIR_SHIFT_COLUMNS_PLACEHOLDER  # [_; N_TABLES] — by convention, shift column j of table t is column j
 AIR_ALPHA_OFFSETS = AIR_ALPHA_OFFSETS_PLACEHOLDER  # [_; N_TABLES], # AIR_ALPHA_OFFSETS[t] = sum(N_AIR_CONSTRAINTS[k] for k in range(t))
 
 N_INSTRUCTION_COLUMNS = N_INSTRUCTION_COLUMNS_PLACEHOLDER
-N_COMMITTED_EXEC_COLUMNS = N_COMMITTED_EXEC_COLUMNS_PLACEHOLDER
 
 LOG_GUEST_BYTECODE_LEN = LOG_GUEST_BYTECODE_LEN_PLACEHOLDER
 EXEC_COL_PC = COL_PC_PLACEHOLDER
@@ -112,7 +110,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
     n_buses_per_table = Array(N_TABLES) # indexed by table_index
     n_cols_per_table = Array(N_TABLES) # indexed by table_index
     for i in unroll(0, N_TABLES):
-        n_buses_per_table[i] = len(ONE_BUSES_DOMSEPS[i]) + 1 # + 1 for the precompile bus interraction (the rest is memory / bytecode interractions)
+        n_buses_per_table[i] = len(ONE_BUSES_DOMSEPS[i]) + 1 # + 1 for the precompile bus interaction (the rest is memory / bytecode interactions)
         n_cols_per_table[i] = NUM_COLS_AIR[i]
 
     gkr_table_base_offset = Array(N_TABLES)
@@ -131,12 +129,12 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
     num_ood_at_commitment = num_oods[0]
     fs, whir_base_root, whir_base_ood_points, whir_base_ood_evals = parse_commitment(fs, num_ood_at_commitment)
 
-    fs, logup_c = fs_sample_ef(fs)
+    fs, logup_gamma = fs_sample_ef(fs)
 
     fs = fs_duplex(fs)
-    fs, logup_alphas = fs_sample_many_ef(fs, log2_ceil(MAX_BUS_WIDTH))
+    fs, logup_beta = fs_sample_many_ef(fs, log2_ceil(MAX_BUS_WIDTH))
 
-    logup_alphas_eq_poly = compute_eq_mle_extension(logup_alphas, log2_ceil(MAX_BUS_WIDTH))
+    logup_beta_eq_poly = compute_eq_mle_extension(logup_beta, log2_ceil(MAX_BUS_WIDTH))
 
     # LOGUP
 
@@ -151,9 +149,9 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
     retrieved_numerators_value: Mut = opposite_extension_ret(mul_extension_ret(memory_and_acc_prefix, value_acc))
 
     value_index = mle_of_01234567_etc(point_gkr + (n_vars_logup_gkr - log_memory) * DIM, log_memory)
-    fingerprint_memory = fingerprint_2(LOGUP_MEMORY_DOMAINSEP, value_index, value_memory, logup_alphas_eq_poly)
+    fingerprint_memory = fingerprint_2(LOGUP_MEMORY_DOMAINSEP, value_index, value_memory, logup_beta_eq_poly)
     retrieved_denominators_value: Mut = mul_extension_ret(
-        memory_and_acc_prefix, sub_extension_ret(logup_c, fingerprint_memory)
+        memory_and_acc_prefix, sub_extension_ret(logup_gamma, fingerprint_memory)
     )
 
     bytecode_section_offset = two_exp(log_memory)
@@ -169,7 +167,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
     bytecode_claim = Array(BYTECODE_CLAIM_SIZE_PADDED)
     copy_many_ef(bytecode_and_acc_point, bytecode_claim, LOG_GUEST_BYTECODE_LEN)
     copy_many_ef(
-        logup_alphas + (log2_ceil(MAX_BUS_WIDTH) - log2_ceil(N_INSTRUCTION_COLUMNS)) * DIM,
+        logup_beta + (log2_ceil(MAX_BUS_WIDTH) - log2_ceil(N_INSTRUCTION_COLUMNS)) * DIM,
         bytecode_claim + LOG_GUEST_BYTECODE_LEN * DIM,
         log2_ceil(N_INSTRUCTION_COLUMNS),
     )
@@ -180,7 +178,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
     bytecode_value_corrected: Mut = bytecode_value
     for i in unroll(0, log2_ceil(MAX_BUS_WIDTH) - log2_ceil(N_INSTRUCTION_COLUMNS)):
         bytecode_value_corrected = mul_extension_ret(
-            bytecode_value_corrected, one_minus_self_extension_ret(logup_alphas + i * DIM)
+            bytecode_value_corrected, one_minus_self_extension_ret(logup_beta + i * DIM)
         )
 
     fs, value_bytecode_acc = fs_receive_ef_inlined(fs, 1)
@@ -194,13 +192,13 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
         mul_extension_ret(
             bytecode_multilinear_location_prefix,
             sub_extension_ret(
-                logup_c,
+                logup_gamma,
                 add_extension_ret(
                     bytecode_value_corrected,
                     add_extension_ret(
-                        mul_extension_ret(bytecode_index_value, logup_alphas_eq_poly + N_INSTRUCTION_COLUMNS * DIM),
+                        mul_extension_ret(bytecode_index_value, logup_beta_eq_poly + N_INSTRUCTION_COLUMNS * DIM),
                         mul_base_extension_ret(
-                            LOGUP_BYTECODE_DOMAINSEP, logup_alphas_eq_poly + (2 ** log2_ceil(MAX_BUS_WIDTH) - 1) * DIM
+                            LOGUP_BYTECODE_DOMAINSEP, logup_beta_eq_poly + (2 ** log2_ceil(MAX_BUS_WIDTH) - 1) * DIM
                         ),
                     ),
                 ),
@@ -248,8 +246,8 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
             retrieved_denominators_value, mul_extension_ret(prefix, eval_on_data)
         )
 
-        copy_5(eval_on_selector, bus_numerators_values + table_index * DIM)
-        copy_5(eval_on_data, bus_denominators_values + table_index * DIM)
+        copy_ef(eval_on_selector, bus_numerators_values + table_index * DIM)
+        copy_ef(eval_on_data, bus_denominators_values + table_index * DIM)
 
         offset += n_rows
 
@@ -271,16 +269,16 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
                 data_ofs = ONE_BUSES_DATA_OFFSETS[table_index][one_bus_idx][i]
                 src = pcs_vals_logup[table_index * MAX_NUM_COLS_AIR + data_col]
                 if data_ofs == 0:
-                    copy_5(src, data_evals + i * DIM)
+                    copy_ef(src, data_evals + i * DIM)
                 if data_ofs != 0:
-                    copy_5(add_base_extension_ret(data_ofs, src), data_evals + i * DIM)
+                    copy_ef(add_base_extension_ret(data_ofs, src), data_evals + i * DIM)
 
             pref = multilinear_location_prefix(offset / n_rows, n_vars_logup_gkr - log_n_rows, point_gkr)
             retrieved_numerators_value = add_extension_ret(retrieved_numerators_value, pref)
-            fingerp = fingerprint_n(domsep, data_evals, n_data, logup_alphas_eq_poly)
+            fingerp = fingerprint_n(domsep, data_evals, n_data, logup_beta_eq_poly)
             retrieved_denominators_value = add_extension_ret(
                 retrieved_denominators_value,
-                mul_extension_ret(pref, sub_extension_ret(logup_c, fingerp)),
+                mul_extension_ret(pref, sub_extension_ret(logup_gamma, fingerp)),
             )
             offset += n_rows
 
@@ -290,8 +288,8 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
         mle_of_zeros_then_ones(point_gkr, gkr_cumul, n_vars_logup_gkr),
     )
 
-    copy_5(retrieved_numerators_value, numerators_value)
-    copy_5(retrieved_denominators_value, denominators_value)
+    copy_ef(retrieved_numerators_value, numerators_value)
+    copy_ef(retrieved_denominators_value, denominators_value)
 
     memory_and_acc_point = point_gkr + (n_vars_logup_gkr - log_memory) * DIM
 
@@ -316,7 +314,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
             bus_final_value,
             mul_extension_ret(
                 air_alpha_powers + (alpha_offset + 1) * DIM,
-                sub_extension_ret(logup_c, bus_denominator_value),
+                sub_extension_ret(logup_gamma, bus_denominator_value),
             ),
         )
         initial_sum = add_extension_ret(initial_sum, bus_final_value)
@@ -335,7 +333,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
         fs, inner_evals = fs_receive_ef_inlined(fs, n_flat_columns + n_shift_columns)
 
         air_constraints_eval = evaluate_air_constraints(
-            table_index, inner_evals, air_alpha_powers + alpha_offset * DIM, logup_alphas_eq_poly
+            table_index, inner_evals, air_alpha_powers + alpha_offset * DIM, logup_beta_eq_poly
         )
 
         bus_point = pcs_inner_points[table_index]
@@ -355,7 +353,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
                 pcs_shifts_air[table_index * MAX_NUM_COLS_AIR + i] = evals_shift + i * DIM
 
     # verify that the AIR-batched sumcheck is valid
-    copy_5(check_sum, batched_air_final_value)
+    copy_ef(check_sum, batched_air_final_value)
 
     fs, public_memory_random_point = fs_sample_many_ef(fs, INNER_PUBLIC_MEMORY_LOG_SIZE)
     poly_eq_public_mem = compute_eq_mle_extension(public_memory_random_point, INNER_PUBLIC_MEMORY_LOG_SIZE)
@@ -413,10 +411,10 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
             curr_randomness += DIM
 
     folding_randomness_global: Mut
-    s: Mut
+    eval_weights: Mut
     final_value: Mut
     end_sum: Mut
-    fs, folding_randomness_global, s, final_value, end_sum = whir_open(
+    fs, folding_randomness_global, eval_weights, final_value, end_sum = whir_open(
         fs,
         stacked_n_vars,
         whir_log_inv_rate,
@@ -434,15 +432,15 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
         log_memory,
     )
     prefix_memory = multilinear_location_prefix(0, stacked_n_vars - log_memory, folding_randomness_global)
-    s = add_extension_ret(
-        s,
+    eval_weights = add_extension_ret(
+        eval_weights,
         mul_extension_ret(mul_extension_ret(curr_randomness, prefix_memory), eq_memory_and_acc_point),
     )
     curr_randomness += DIM
 
     prefix_acc_memory = multilinear_location_prefix(1, stacked_n_vars - log_memory, folding_randomness_global)
-    s = add_extension_ret(
-        s,
+    eval_weights = add_extension_ret(
+        eval_weights,
         mul_extension_ret(mul_extension_ret(curr_randomness, prefix_acc_memory), eq_memory_and_acc_point),
     )
     curr_randomness += DIM
@@ -457,8 +455,8 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
     prefix_pub_mem = multilinear_location_prefix(
         0, stacked_n_vars - INNER_PUBLIC_MEMORY_LOG_SIZE, folding_randomness_global
     )
-    s = add_extension_ret(
-        s,
+    eval_weights = add_extension_ret(
+        eval_weights,
         mul_extension_ret(mul_extension_ret(curr_randomness, prefix_pub_mem), eq_pub_mem),
     )
     curr_randomness += DIM
@@ -477,8 +475,8 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
         stacked_n_vars - LOG_GUEST_BYTECODE_LEN,
         folding_randomness_global,
     )
-    s = add_extension_ret(
-        s,
+    eval_weights = add_extension_ret(
+        eval_weights,
         mul_extension_ret(mul_extension_ret(curr_randomness, prefix_bytecode_acc), eq_bytecode_acc),
     )
     curr_randomness += DIM
@@ -495,7 +493,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
                 stacked_n_vars,
                 folding_randomness_global,
             )
-            s = add_extension_ret(s, mul_extension_ret(curr_randomness, prefix_pc_start))
+            eval_weights = add_extension_ret(eval_weights, mul_extension_ret(curr_randomness, prefix_pc_start))
             curr_randomness += DIM
 
             prefix_pc_end = multilinear_location_prefix(
@@ -503,7 +501,7 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
                 stacked_n_vars,
                 folding_randomness_global,
             )
-            s = add_extension_ret(s, mul_extension_ret(curr_randomness, prefix_pc_end))
+            eval_weights = add_extension_ret(eval_weights, mul_extension_ret(curr_randomness, prefix_pc_end))
             curr_randomness += DIM
 
         column_prefixes = compute_column_prefixes(
@@ -523,20 +521,20 @@ def recursion(inner_public_memory, initial_fiat_shamir_cap):
             prefix = column_prefixes + col * DIM
             logup_acc = add_extension_ret(logup_acc, mul_extension_ret(curr_randomness, prefix))
             curr_randomness += DIM
-        s = add_extension_ret(s, mul_extension_ret(logup_acc, eq_factor_logup))
+        eval_weights = add_extension_ret(eval_weights, mul_extension_ret(logup_acc, eq_factor_logup))
 
         # AIR
         if n_shift_columns != 0:
             next_factor = next_mle(all_challenges, inner_folding, log_n_rows)
             shift_sum = dot_product_ee_ret(curr_randomness, column_prefixes, n_shift_columns)
-            s = add_extension_ret(s, mul_extension_ret(shift_sum, next_factor))
+            eval_weights = add_extension_ret(eval_weights, mul_extension_ret(shift_sum, next_factor))
             curr_randomness += n_shift_columns * DIM
         eq_factor_air = poly_eq_extension_dynamic_ret(all_challenges, inner_folding, log_n_rows)
         air_sum = dot_product_ee_ret(curr_randomness, column_prefixes, N_AIR_COLUMNS[table_index])
-        s = add_extension_ret(s, mul_extension_ret(air_sum, eq_factor_air))
+        eval_weights = add_extension_ret(eval_weights, mul_extension_ret(air_sum, eq_factor_air))
         curr_randomness += N_AIR_COLUMNS[table_index] * DIM
 
-    copy_5(mul_extension_ret(s, final_value), end_sum)
+    copy_ef(mul_extension_ret(eval_weights, final_value), end_sum)
 
     return bytecode_claim
 
@@ -579,23 +577,23 @@ def compute_column_prefixes(first_col_offset, n_vars, point, n_cols: Const):
     return column_prefixes + r * DIM
 
 
-def fingerprint_2(table_index, data_1, data_2, logup_alphas_eq_poly):
+def fingerprint_2(table_index, data_1, data_2, logup_beta_eq_poly):
     buff = Array(DIM * 2)
-    copy_5(data_1, buff)
-    copy_5(data_2, buff + DIM)
-    res: Mut = dot_product_ee_ret(buff, logup_alphas_eq_poly, 2)
+    copy_ef(data_1, buff)
+    copy_ef(data_2, buff + DIM)
+    res: Mut = dot_product_ee_ret(buff, logup_beta_eq_poly, 2)
     res = add_extension_ret(
-        res, mul_base_extension_ret(table_index, logup_alphas_eq_poly + (2 ** log2_ceil(MAX_BUS_WIDTH) - 1) * DIM)
+        res, mul_base_extension_ret(table_index, logup_beta_eq_poly + (2 ** log2_ceil(MAX_BUS_WIDTH) - 1) * DIM)
     )
     return res
 
 
 @inline
-def fingerprint_n(domsep, data_evals, n, logup_alphas_eq_poly):
-    res: Mut = dot_product_ee_ret(data_evals, logup_alphas_eq_poly, n)
+def fingerprint_n(domsep, data_evals, n, logup_beta_eq_poly):
+    res: Mut = dot_product_ee_ret(data_evals, logup_beta_eq_poly, n)
     res = add_extension_ret(
         res,
-        mul_base_extension_ret(domsep, logup_alphas_eq_poly + (2 ** log2_ceil(MAX_BUS_WIDTH) - 1) * DIM),
+        mul_base_extension_ret(domsep, logup_beta_eq_poly + (2 ** log2_ceil(MAX_BUS_WIDTH) - 1) * DIM),
     )
     return res
 
@@ -674,7 +672,7 @@ def verify_gkr_quotient_step(prev_fs, n_vars, point, claim_num, claim_den):
     new_claim_num = dot_product_ee_ret(inner_evals, point_poly_eq, 2)
     new_claim_den = dot_product_ee_ret(inner_evals + 2 * DIM, point_poly_eq, 2)
 
-    copy_5(beta, postponed_point + n_vars * DIM)
+    copy_ef(beta, postponed_point + n_vars * DIM)
 
     return fs, postponed_point, new_claim_num, new_claim_den
 
@@ -701,16 +699,16 @@ def compute_total_gkr_n_vars(log_memory, log_bytecode_padded, tables_heights):
     return log2_ceil_runtime(total)
 
 
-def evaluate_air_constraints(table_index, inner_evals, air_alpha_powers, logup_alphas_eq_poly):
+def evaluate_air_constraints(table_index, inner_evals, air_alpha_powers, logup_beta_eq_poly):
     res: Imm
     debug_assert(table_index < N_TABLES)
     match table_index:
         case 0:
-            res = evaluate_air_constraints_table_0(inner_evals, air_alpha_powers, logup_alphas_eq_poly)
+            res = evaluate_air_constraints_table_0(inner_evals, air_alpha_powers, logup_beta_eq_poly)
         case 1:
-            res = evaluate_air_constraints_table_1(inner_evals, air_alpha_powers, logup_alphas_eq_poly)
+            res = evaluate_air_constraints_table_1(inner_evals, air_alpha_powers, logup_beta_eq_poly)
         case 2:
-            res = evaluate_air_constraints_table_2(inner_evals, air_alpha_powers, logup_alphas_eq_poly)
+            res = evaluate_air_constraints_table_2(inner_evals, air_alpha_powers, logup_beta_eq_poly)
     return res
 
 

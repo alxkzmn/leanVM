@@ -274,7 +274,6 @@ fn build_replacements(log_inner_bytecode: usize, bytecode_zero_eval: F) -> BTree
     let mut one_buses_data_offsets = vec![];
     let mut one_buses_new_cols = vec![];
     let mut num_cols_air = vec![];
-    let mut air_degrees = vec![];
     let mut n_air_columns = vec![];
     let mut n_air_shift_columns = vec![];
     let mut n_air_constraints = vec![];
@@ -334,7 +333,6 @@ fn build_replacements(log_inner_bytecode: usize, bytecode_zero_eval: F) -> BTree
         ));
 
         num_cols_air.push(table.n_columns().to_string());
-        air_degrees.push(table.degree_air().to_string());
         n_air_columns.push(table.n_columns().to_string());
         n_air_shift_columns.push(table.n_shift_columns().to_string());
         n_air_constraints.push(table.n_constraints().to_string());
@@ -388,10 +386,6 @@ fn build_replacements(log_inner_bytecode: usize, bytecode_zero_eval: F) -> BTree
         format!("[{}]", air_alpha_offsets.join(", ")),
     );
     replacements.insert(
-        "AIR_DEGREES_PLACEHOLDER".to_string(),
-        format!("[{}]", air_degrees.join(", ")),
-    );
-    replacements.insert(
         "MAX_AIR_FULL_DEGREE_PLACEHOLDER".to_string(),
         (ALL_TABLES.iter().map(|t| t.degree_air()).max().unwrap() + 1).to_string(),
     );
@@ -410,10 +404,6 @@ fn build_replacements(log_inner_bytecode: usize, bytecode_zero_eval: F) -> BTree
     replacements.insert(
         "N_INSTRUCTION_COLUMNS_PLACEHOLDER".to_string(),
         N_INSTRUCTION_COLUMNS.to_string(),
-    );
-    replacements.insert(
-        "N_COMMITTED_EXEC_COLUMNS_PLACEHOLDER".to_string(),
-        N_RUNTIME_COLUMNS.to_string(),
     );
     replacements.insert(
         "TOTAL_WHIR_STATEMENTS_PLACEHOLDER".to_string(),
@@ -532,7 +522,7 @@ where
     let mut ctx = AirCodegenCtx::new();
 
     let mut res = format!(
-        "def evaluate_air_constraints_table_{}({}, air_alpha_powers, logup_alphas_eq_poly):\n",
+        "def evaluate_air_constraints_table_{}({}, air_alpha_powers, logup_beta_eq_poly):\n",
         table.table().index(),
         AIR_INNER_VALUES_VAR
     );
@@ -549,17 +539,17 @@ where
     res += &format!("\n    buff = Array(DIM * {})", bus_real_data.len());
     for (i, data) in bus_real_data.iter().enumerate() {
         let data_str = eval_air_constraint(*data, None, &mut ctx, &mut res);
-        res += &format!("\n    copy_5({}, buff + DIM * {})", data_str, i);
+        res += &format!("\n    copy_ef({}, buff + DIM * {})", data_str, i);
     }
     let domainsep_str = eval_air_constraint(*bus_domainsep, None, &mut ctx, &mut res);
-    // bus_res = sum(buff[i] * logup_alphas_eq_poly[i]) + disc * logup_alphas_eq_poly.last()
+    // bus_res = sum(buff[i] * logup_beta_eq_poly[i]) + disc * logup_beta_eq_poly.last()
     res += "\n    bus_res_init = Array(DIM)";
     res += &format!(
-        "\n    dot_product_ee(buff, logup_alphas_eq_poly, bus_res_init, {})",
+        "\n    dot_product_ee(buff, logup_beta_eq_poly, bus_res_init, {})",
         bus_real_data.len()
     );
     res += &format!(
-        "\n    bus_res: Mut = add_extension_ret(mul_extension_ret({}, logup_alphas_eq_poly + {} * DIM), bus_res_init)",
+        "\n    bus_res: Mut = add_extension_ret(mul_extension_ret({}, logup_beta_eq_poly + {} * DIM), bus_res_init)",
         domainsep_str,
         (1 << LOG_MAX_BUS_WIDTH) - 1
     );
@@ -618,7 +608,7 @@ fn eval_air_constraint(
     if let Some(d) = dest
         && v != d
     {
-        res.push_str(&format!("\n    copy_5({}, {})", v, d));
+        res.push_str(&format!("\n    copy_ef({}, {})", v, d));
     }
     v
 }

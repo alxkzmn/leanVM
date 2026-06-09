@@ -11,7 +11,6 @@ RANDOMNESS_LEN = RANDOMNESS_LEN_PLACEHOLDER
 PUBLIC_PARAM_LEN_FE = PUBLIC_PARAM_LEN_FE_PLACEHOLDER
 XMSS_DIGEST_LEN = XMSS_DIGEST_LEN_PLACEHOLDER
 PUB_KEY_SIZE = XMSS_DIGEST_LEN + PUBLIC_PARAM_LEN_FE
-PP_IN_LEFT = DIGEST_LEN - XMSS_DIGEST_LEN
 WOTS_SIG_SIZE = RANDOMNESS_LEN + V * XMSS_DIGEST_LEN
 # wots_public_key pair stride: each pair occupies 10 cells `[leading_0 | tip_a(4) | tip_b(4) | trailing_0]`. In order to be able to use copy_5 on both sides.
 WOTS_PK_PAIR_STRIDE = 2 + 2 * XMSS_DIGEST_LEN
@@ -50,12 +49,12 @@ def xmss_verify(pub_key, message, merkle_chunks):
     pre_compressed = Array(DIGEST_LEN)
     poseidon16_compress_half(message, a_input_right, pre_compressed)
 
-    public_params_paded_buff = Array(DIGEST_LEN + 2)  # 0 [public_param(4) | zeros(4)] 0
-    copy_5(public_param - 1, public_params_paded_buff)
-    set_to_5_zeros(public_params_paded_buff + 5)
-    public_params_paded = public_params_paded_buff + 1
+    public_params_padded_buff = Array(DIGEST_LEN + 2)  # 0 [public_param(4) | zeros(4)] 0
+    copy_5(public_param - 1, public_params_padded_buff)
+    set_to_5_zeros(public_params_padded_buff + 5)
+    public_params_padded = public_params_padded_buff + 1
     encoding_fe = Array(DIGEST_LEN)
-    poseidon16_compress_half(pre_compressed, public_params_paded, encoding_fe)
+    poseidon16_compress_half(pre_compressed, public_params_padded, encoding_fe)
 
     # Decompose the encoding into chunks of 2*W bits. Each chunk packs the chain step
     # counts of two consecutive WOTS chains: chunk i = step_{2i} + CHAIN_LENGTH * step_{2i+1}.
@@ -101,7 +100,7 @@ def xmss_verify(pub_key, message, merkle_chunks):
                 chain_end_b,
                 tweaks_a,
                 tweaks_b,
-                public_params_paded,
+                public_params_padded,
                 pair_sum_ptr,
             ),
         )
@@ -191,14 +190,6 @@ def wots_pk_hash(wots_public_key, public_param):
     return sponge_finalize(
         states + (N_CHUNKS - 1) * DIGEST_LEN, wots_public_key + (N_CHUNKS - 1) * WOTS_PK_PAIR_STRIDE + 1
     )
-
-
-@inline
-def set_buf_prefix_right(buf, public_param):
-    # Writes [pp(4)] to buf[0..4] — the RIGHT-input prefix.
-    for k in unroll(0, PP_IN_LEFT):
-        buf[k] = public_param[k]
-    return
 
 
 @inline
