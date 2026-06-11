@@ -16,26 +16,31 @@ pub fn fill_trace_poseidon_16(trace: &mut [ArenaVec<F>]) {
     }
 
     let m = n - (n % packing_width::<F>());
-    let trace_packed: Vec<_> = trace.iter().map(|col| FPacking::<F>::pack_slice(&col[..m])).collect();
 
     const N_COLS: usize = super::num_cols_poseidon_16();
 
-    // fill the packed rows. Bind a fixed-size array ref so the per-row `array::from_fn`
-    // indexing elides bounds checks (one length check here, none in the hot loop).
-    let cols: &[&[FPacking<F>]; N_COLS] = (&trace_packed[..N_COLS]).try_into().unwrap();
-    parallel::for_each_index(m / packing_width::<F>(), |i| {
-        let ptrs: [*mut FPacking<F>; N_COLS] =
-            std::array::from_fn(|c| unsafe { (cols[c].as_ptr() as *mut FPacking<F>).add(i) });
-        let perm: &mut Poseidon1Cols16<&mut FPacking<F>> =
-            unsafe { &mut *(ptrs.as_ptr() as *mut Poseidon1Cols16<&mut FPacking<F>>) };
+    // Packed rows: one mutable base ptr per column, shared across workers via `SendPtr`.
+    // Worker `i` writes the disjoint slot `[col][i]`, satisfying SendPtr's disjointness contract.
+    {
+        let bases: [parallel::SendPtr<FPacking<F>>; N_COLS] = trace[..N_COLS]
+            .iter_mut()
+            .map(|col| parallel::SendPtr(FPacking::<F>::pack_slice_mut(&mut col[..m]).as_mut_ptr()))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        parallel::for_each_index(m / packing_width::<F>(), |i| {
+            let ptrs: [*mut FPacking<F>; N_COLS] = std::array::from_fn(|c| unsafe { bases[c].add(i) });
+            let perm: &mut Poseidon1Cols16<&mut FPacking<F>> =
+                unsafe { &mut *(ptrs.as_ptr() as *mut Poseidon1Cols16<&mut FPacking<F>>) };
 
-        generate_trace_rows_for_perm(perm);
-    });
+            generate_trace_rows_for_perm(perm);
+        });
+    }
 
-    // fill the remaining rows (non packed)
-    let cols: &[ArenaVec<F>; N_COLS] = (&trace[..N_COLS]).try_into().unwrap();
+    // Remaining (non-packed) rows
+    let bases: [*mut F; N_COLS] = std::array::from_fn(|c| trace[c].as_mut_ptr());
     for i in m..n {
-        let ptrs: [*mut F; N_COLS] = std::array::from_fn(|c| unsafe { (cols[c].as_ptr() as *mut F).add(i) });
+        let ptrs: [*mut F; N_COLS] = std::array::from_fn(|c| unsafe { bases[c].add(i) });
         let perm: &mut Poseidon1Cols16<&mut F> = unsafe { &mut *(ptrs.as_ptr() as *mut Poseidon1Cols16<&mut F>) };
         generate_trace_rows_for_perm(perm);
     }
