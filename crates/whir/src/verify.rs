@@ -2,6 +2,7 @@
 
 use std::{fmt::Debug, marker::PhantomData};
 
+use ::utils::log2_strict_usize;
 use fiat_shamir::{FSVerifier, ProofError, ProofResult, try_pack_scalars_to_extension};
 use field::{ExtensionField, Field, PrimeCharacteristicRing, TwoAdicField};
 
@@ -300,7 +301,14 @@ where
         F: Field + ExtensionField<PF<EF>>,
         EF: ExtensionField<F>,
     {
-        verifier_state.begin_merkle_opening_batch(indices.len())?;
+        let merkle_height = log2_strict_usize(dimensions[0].height);
+        let leaf_len = dimensions[0].width
+            * if leafs_base_field {
+                1
+            } else {
+                <EF as field::BasedVectorSpace<F>>::DIMENSION
+            };
+        verifier_state.begin_merkle_opening_batch(indices, merkle_height, leaf_len)?;
         let res = if leafs_base_field {
             let mut answers = Vec::<Vec<F>>::new();
             let mut merkle_proofs = Vec::new();

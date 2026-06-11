@@ -122,7 +122,7 @@ pub(crate) fn merkle_verify<F: Field, EF: ExtensionField<F>>(
     proof: &Vec<[F; DIGEST_ELEMS]>,
 ) -> bool {
     let perm = default_koalabear_poseidon1_16();
-    let log_max_height = utils::log2_strict_usize(dimension.height.next_power_of_two());
+    let log_max_height = utils::log2_strict_usize(dimension.height);
     if TypeId::of::<(F, EF)>() == TypeId::of::<(KoalaBear, QuinticExtensionFieldKB)>() {
         let merkle_root = unsafe { std::mem::transmute_copy::<_, [KoalaBear; DIGEST_ELEMS]>(&merkle_root) };
         let data = unsafe { std::mem::transmute::<_, Vec<QuinticExtensionFieldKB>>(data) };

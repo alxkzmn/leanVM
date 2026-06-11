@@ -41,12 +41,7 @@ impl<F: Field> Proof<F> {
             .merkle_paths
             .iter()
             .map(|paths| {
-                paths.leaf_data.iter().map(|d| d.len()).sum::<usize>()
-                    + paths
-                        .paths
-                        .iter()
-                        .map(|(_, sh): &(_, Vec<_>)| sh.len() * DIGEST_LEN_FE)
-                        .sum::<usize>()
+                paths.leaf_data.iter().map(|d| d.len()).sum::<usize>() + paths.sibling_hashes.len() * DIGEST_LEN_FE
             })
             .sum();
         self.transcript.len() + merkle_size

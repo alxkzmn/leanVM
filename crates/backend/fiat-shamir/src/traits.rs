@@ -48,7 +48,12 @@ pub trait FSVerifier<EF: ExtensionField<PF<EF>>>: ChallengeSampler<EF> {
     fn next_base_scalars_vec(&mut self, n: usize) -> Result<Vec<PF<EF>>, ProofError>;
     fn observe_scalars(&mut self, scalars: &[PF<EF>]);
     fn duplex(&mut self);
-    fn begin_merkle_opening_batch(&mut self, n: usize) -> Result<(), ProofError>;
+    fn begin_merkle_opening_batch(
+        &mut self,
+        indices: &[usize],
+        merkle_height: usize,
+        leaf_len: usize,
+    ) -> Result<(), ProofError>;
     fn next_merkle_opening(&mut self) -> Result<MerkleOpening<PF<EF>>, ProofError>;
     fn check_pow_grinding(&mut self, bits: usize) -> Result<(), ProofError>;
     fn next_sumcheck_polynomial(
