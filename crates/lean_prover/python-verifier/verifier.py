@@ -790,7 +790,7 @@ TABLES = [
         air_degree=6,
         n_constraints=35,
         n_shift=13,
-        max_log_height=21,
+        max_log_height=22,
         air_constraints_fn=eval_air_extension_table,
     ),
     Table(
@@ -806,7 +806,7 @@ TABLES = [
         air_degree=10,
         n_constraints=101,
         n_shift=0,
-        max_log_height=21,
+        max_log_height=22,
         air_constraints_fn=eval_air_poseidon16_table,
     ),
 ]
