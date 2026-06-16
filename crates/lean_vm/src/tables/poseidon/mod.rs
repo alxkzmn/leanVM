@@ -307,7 +307,8 @@ impl<const BUS: bool> Air for Poseidon16Precompile<BUS> {
         0
     }
     fn n_constraints(&self) -> usize {
-        2 * BUS as usize + 94
+        const PRELUDE_CONSTRAINTS: usize = 10;
+        2 * BUS as usize + PRELUDE_CONSTRAINTS + POSEIDON1_HALF_FULL_ROUNDS * WIDTH + PARTIAL_ROUNDS
     }
     fn eval<AB: AirBuilder>(&self, builder: &mut AB, extra_data: &Self::ExtraData) {
         let cols: Poseidon1Cols16<AB::IF> = {
