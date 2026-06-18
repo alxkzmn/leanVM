@@ -232,6 +232,7 @@ pub enum XmssSignatureError {
 }
 
 /// WARNING: XMSS is statefull signature, you should never sign with the same same `slot` twice.
+/// (Even signing twice with the same message, at the same slot, is insecure, due to the non-determinism of the randomness part of the signature)
 pub fn xmss_sign<R: CryptoRng>(
     rng: &mut R,
     secret_key: &XmssSecretKey,
