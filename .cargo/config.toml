@@ -1,3 +1,6 @@
+[env]
+RUST_MIN_STACK = "536870912"
+
 [alias]
 testall = ["test", "--all", "--release"]
 
