@@ -90,7 +90,7 @@ pub(crate) fn packing_decompose<EF: ExtensionField<PF<EF>>>(e: EFPacking<EF>) ->
 }
 
 #[inline(always)]
-fn packing_unpack_sum<EF: ExtensionField<PF<EF>>>(s: EFPacking<EF>) -> EF {
+pub fn packing_unpack_sum<EF: ExtensionField<PF<EF>>>(s: EFPacking<EF>) -> EF {
     EFPacking::<EF>::to_ext_iter([s]).sum::<EF>()
 }
 
