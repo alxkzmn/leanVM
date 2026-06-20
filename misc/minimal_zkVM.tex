@@ -1080,7 +1080,7 @@ Virtual (non-committed) columns: $\textsf{multiplicity} = \textsf{flag\_start} \
 
 \subsubsection{Bus interactions}
 
-\textbf{Memory pulls.} For each operand $(s, \textsf{idx}) \in \{(v_A, \textsf{idx}_A),\, (v_B, \textsf{idx}_B),\, (\textsf{res}, \textsf{idx}_R)\}$ and each $k \in [0, \extdeg)$:
+\textbf{Memory pulls.} For each operand $(\textsf{idx}, s) \in \{(\textsf{idx}_A, v_A),\, (\textsf{idx}_B, v_B),\, (\textsf{idx}_R, \textsf{res})\}$ and each $k \in [0, \extdeg)$:
 \[
 \textsc{Pull}\big(\textsf{idx} + k,\, s[k],\, 0_{13},\, \textsf{memory\_sep}\big) \quad \text{with multiplicity } 1.
 \]
