@@ -17,7 +17,7 @@ pub const OUTPUT_LIMBS: usize = OUTPUT_WORDS * U32_LIMBS;
 const FULL_ROUNDS: usize = 7;
 const QUARTER_ROUND_CONSTRAINTS: usize = 144;
 const ROUND_CONSTRAINTS: usize = 8 * QUARTER_ROUND_CONSTRAINTS;
-const FINAL_OUTPUT_CONSTRAINTS: usize = 784;
+const FINAL_OUTPUT_CONSTRAINTS: usize = 528;
 const INPUT_CONSTRAINTS: usize = INPUT_WORDS * (32 + U32_LIMBS);
 const OUTPUT_CONSTRAINTS: usize = OUTPUT_WORDS * U32_LIMBS;
 
@@ -35,8 +35,8 @@ const IV: [u32; 8] = [
 const CHUNK_START: u32 = 1;
 const CHUNK_END: u32 = 2;
 const ROOT: u32 = 8;
-const BLOCK_LEN: u32 = 64;
-const FLAGS: u32 = CHUNK_START | CHUNK_END | ROOT;
+pub(super) const BLOCK_LEN: u32 = 64;
+pub(super) const FLAGS: u32 = CHUNK_START | CHUNK_END | ROOT;
 
 const MSG_PERMUTATION: [usize; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
 
@@ -150,6 +150,9 @@ impl<const BUS: bool> Air for Blake3Precompile<BUS> {
     type ExtraData = ExtraDataForBuses<EF>;
 
     fn degree_air(&self) -> usize {
+        // The BLAKE3 AIR gates its constraints by multiplicity so padding rows do not need a
+        // BLAKE3-specific null-hash memory row. This keeps padding simple but raises the degree by
+        // one compared with Poseidon-style valid padding rows.
         4
     }
 
@@ -225,7 +228,7 @@ impl<const BUS: bool> Air for Blake3Precompile<BUS> {
             assert_eq_gated(builder, multiplicity, input_limbs[2 * word + 1], hi);
         }
 
-        eval_blake3(builder, multiplicity, &cols);
+        eval_blake3(builder, multiplicity, cols);
 
         for word in 0..OUTPUT_WORDS {
             let bits = if word < 4 {
@@ -247,7 +250,7 @@ pub struct Blake3Cols<T> {
     pub inputs: [[T; 32]; INPUT_WORDS],
     pub full_rounds: [FullRound<T>; FULL_ROUNDS],
     pub final_round_helpers: [[T; 32]; 4],
-    pub outputs: [[[T; 32]; 4]; 4],
+    pub outputs: [[[T; 32]; 4]; 2],
 }
 
 #[repr(C)]
@@ -371,32 +374,6 @@ fn eval_blake3<AB: AirBuilder>(builder: &mut AB, multiplicity: AB::IF, local: &B
                     local.full_rounds[FULL_ROUNDS - 1].state_output.row1[i][j],
                     local.full_rounds[FULL_ROUNDS - 1].state_output.row3[i][j],
                 ),
-            );
-        }
-    }
-
-    for i in 0..4 {
-        let out_bits = local.outputs[2][i];
-        let cv_bits = u32_bits_if::<AB::IF>(IV[i]);
-        for j in 0..32 {
-            assert_eq_gated(
-                builder,
-                multiplicity,
-                out_bits[j],
-                xor(cv_bits[j], local.final_round_helpers[i][j]),
-            );
-        }
-    }
-
-    for i in 0..4 {
-        let out_bits = local.outputs[3][i];
-        let cv_bits = u32_bits_if::<AB::IF>(IV[4 + i]);
-        for j in 0..32 {
-            assert_eq_gated(
-                builder,
-                multiplicity,
-                out_bits[j],
-                xor(cv_bits[j], local.full_rounds[FULL_ROUNDS - 1].state_output.row3[i][j]),
             );
         }
     }

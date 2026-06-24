@@ -36,6 +36,8 @@ LOOP_ITERS = LOOP_ITERS_PLACEHOLDER
 N_POSEIDON = N_POSEIDON_PLACEHOLDER
 EXT_LEN = EXT_LEN_PLACEHOLDER
 BYTECODE_PAD = BYTECODE_PAD_PLACEHOLDER
+BLAKE3_INPUT_LIMBS = 32
+BLAKE3_OUTPUT_LIMBS = 16
 
 def main():
     scratch = Array(SCRATCH_SIZE)
@@ -132,6 +134,11 @@ def main():
     pos_out = Array(N_POSEIDON * 8 + 16)
     for i in range(0, N_POSEIDON):
         poseidon16_permute_half(pos_src, pos_src + 8, pos_out + i * 8)
+
+    # blake3 table: one 64-byte hash, with 16 u16 limbs per input half.
+    blake_src = Array(BLAKE3_INPUT_LIMBS + BLAKE3_OUTPUT_LIMBS)
+    hint_witness("blake_src", blake_src)
+    blake3_hash_64(blake_src, blake_src + 16, blake_src + BLAKE3_INPUT_LIMBS)
 
     # extension table: a single EXT_LEN-long dot product (output left unread too).
     big_a = Array(EXT_LEN * DIM)
@@ -267,10 +274,12 @@ fn all_precompiles_witness(ext_len: usize, bytecode: &Bytecode) -> ([F; PUBLIC_I
     public_input[..4].copy_from_slice(&hardcoded_prefix);
 
     let pos_src: [F; 16] = rng.random();
+    let blake_src = blake3_scratch(blake3_input_words());
     let ext_vec = |rng: &mut StdRng| ef_to_f(&(0..ext_len).map(|_| rng.random()).collect::<Vec<EF>>());
     let mut hints = Hints::default();
     hints.insert(bytecode, "scratch", arena_vec![ArenaVec::from_slice(&scratch)]);
     hints.insert(bytecode, "pos_src", arena_vec![ArenaVec::from_slice(&pos_src)]);
+    hints.insert(bytecode, "blake_src", arena_vec![ArenaVec::from_slice(&blake_src)]);
     hints.insert(bytecode, "ext_a", arena_vec![ArenaVec::from_slice(&ext_vec(&mut rng))]);
     hints.insert(bytecode, "ext_b", arena_vec![ArenaVec::from_slice(&ext_vec(&mut rng))]);
     let witness = ExecutionWitness {
@@ -283,21 +292,7 @@ fn all_precompiles_witness(ext_len: usize, bytecode: &Bytecode) -> ([F; PUBLIC_I
 #[test]
 fn test_zk_vm_blake3_precompile_execute() {
     let bytecode = compile_program(&ProgramSource::Raw(BLAKE3_PROGRAM.to_string()));
-    let input_words: [u32; 16] = array::from_fn(|i| {
-        let mut state = 0x424c_414b_4533_u64 ^ (i as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15);
-        state = state.wrapping_add(0xbf58_476d_1ce4_e5b9);
-        (state ^ (state >> 32)) as u32
-    });
-    let output = blake3_hash_64_u16(input_words);
-
-    let mut scratch = F::zero_vec(64);
-    for (word, limbs) in input_words.iter().zip(scratch[..32].chunks_exact_mut(2)) {
-        limbs[0] = F::from_u16(*word as u16);
-        limbs[1] = F::from_u16((word >> 16) as u16);
-    }
-    for (dst, limb) in scratch[32..48].iter_mut().zip(output) {
-        *dst = F::from_u16(limb);
-    }
+    let scratch = blake3_scratch(blake3_input_words());
 
     let mut hints = Hints::default();
     hints.insert(
@@ -326,21 +321,7 @@ fn test_zk_vm_blake3_precompile_prove() {
 
 fn blake3_precompile_case() -> (Bytecode, [F; PUBLIC_INPUT_LEN], ExecutionWitness) {
     let bytecode = compile_program(&ProgramSource::Raw(BLAKE3_PROGRAM.to_string()));
-    let input_words: [u32; 16] = array::from_fn(|i| {
-        let mut state = 0x424c_414b_4533_u64 ^ (i as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15);
-        state = state.wrapping_add(0xbf58_476d_1ce4_e5b9);
-        (state ^ (state >> 32)) as u32
-    });
-    let output = blake3_hash_64_u16(input_words);
-
-    let mut scratch = F::zero_vec(64);
-    for (word, limbs) in input_words.iter().zip(scratch[..32].chunks_exact_mut(2)) {
-        limbs[0] = F::from_u16(*word as u16);
-        limbs[1] = F::from_u16((word >> 16) as u16);
-    }
-    for (dst, limb) in scratch[32..48].iter_mut().zip(output) {
-        *dst = F::from_u16(limb);
-    }
+    let scratch = blake3_scratch(blake3_input_words());
 
     let mut hints = Hints::default();
     hints.insert(
@@ -359,6 +340,28 @@ fn blake3_precompile_case() -> (Bytecode, [F; PUBLIC_INPUT_LEN], ExecutionWitnes
     }
 
     (bytecode, public_input, witness)
+}
+
+fn blake3_input_words() -> [u32; 16] {
+    array::from_fn(|i| {
+        let mut state = 0x424c_414b_4533_u64 ^ (i as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        state = state.wrapping_add(0xbf58_476d_1ce4_e5b9);
+        (state ^ (state >> 32)) as u32
+    })
+}
+
+fn blake3_scratch(input_words: [u32; 16]) -> Vec<F> {
+    let output = blake3_hash_64_u16(input_words);
+
+    let mut scratch = F::zero_vec(48);
+    for (word, limbs) in input_words.iter().zip(scratch[..32].chunks_exact_mut(2)) {
+        limbs[0] = F::from_u16(*word as u16);
+        limbs[1] = F::from_u16((word >> 16) as u16);
+    }
+    for (dst, limb) in scratch[32..48].iter_mut().zip(output) {
+        *dst = F::from_u16(limb);
+    }
+    scratch
 }
 
 #[test]

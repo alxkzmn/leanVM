@@ -1,16 +1,13 @@
 use crate::{
     F,
     tables::blake3::{
-        BLAKE3_COL_INPUT_LIMBS, BLAKE3_COL_OUTPUT_LIMBS, BLAKE3_COL_P3_START, Blake3Cols, Blake3State, FullRound,
-        INPUT_LIMBS, INPUT_WORDS, IV, MSG_PERMUTATION, OUTPUT_LIMBS, OUTPUT_WORDS, permute,
+        BLAKE3_COL_INPUT_LIMBS, BLAKE3_COL_OUTPUT_LIMBS, BLAKE3_COL_P3_START, BLOCK_LEN, Blake3Cols, Blake3State,
+        FLAGS, FullRound, INPUT_LIMBS, INPUT_WORDS, IV, OUTPUT_LIMBS, OUTPUT_WORDS, permute,
     },
 };
 use backend::*;
 use std::array;
 use tracing::instrument;
-
-const BLOCK_LEN: u32 = 64;
-const FLAGS: u32 = 1 | 2 | 8;
 
 #[instrument(name = "generate Blake3 AIR trace", skip_all)]
 pub fn fill_trace_blake3(trace: &mut [ArenaVec<F>]) {
@@ -55,8 +52,7 @@ pub fn blake3_hash_64_u16(input_words: [u32; INPUT_WORDS]) -> [u16; OUTPUT_LIMBS
 }
 
 fn blake3_hash_64_words(input_words: [u32; INPUT_WORDS]) -> [u32; OUTPUT_WORDS] {
-    let output = compress(input_words);
-    output[..OUTPUT_WORDS].try_into().unwrap()
+    compress(input_words)
 }
 
 pub fn generate_trace_rows_for_hash<F: PrimeCharacteristicRing>(
@@ -68,41 +64,43 @@ pub fn generate_trace_rows_for_hash<F: PrimeCharacteristicRing>(
     }
 
     let mut m_vec = input;
-    let mut state = [
-        [IV[0], IV[1], IV[2], IV[3]],
-        [IV[4], IV[5], IV[6], IV[7]],
-        [IV[0], IV[1], IV[2], IV[3]],
-        [0, 0, BLOCK_LEN, FLAGS],
-    ];
+    let mut state = initial_state();
 
     for round in 0..7 {
         generate_trace_row_for_round(&mut row.full_rounds[round], &mut state, &m_vec);
         permute(&mut m_vec);
     }
 
+    let output = first_output_words(&state);
     for i in 0..4 {
         write_bits(&mut row.final_round_helpers[i], u32_to_bits_le(state[2][i]));
-        write_bits(&mut row.outputs[0][i], u32_to_bits_le(state[0][i] ^ state[2][i]));
-        write_bits(&mut row.outputs[1][i], u32_to_bits_le(state[1][i] ^ state[3][i]));
-        write_bits(&mut row.outputs[2][i], u32_to_bits_le(state[2][i] ^ IV[i]));
-        write_bits(&mut row.outputs[3][i], u32_to_bits_le(state[3][i] ^ IV[4 + i]));
+        write_bits(&mut row.outputs[0][i], u32_to_bits_le(output[i]));
+        write_bits(&mut row.outputs[1][i], u32_to_bits_le(output[4 + i]));
     }
 }
 
-fn compress(input: [u32; INPUT_WORDS]) -> [u32; 16] {
+fn compress(input: [u32; INPUT_WORDS]) -> [u32; OUTPUT_WORDS] {
     let mut m_vec = input;
-    let mut state = [
+    let mut state = initial_state();
+
+    for _ in 0..7 {
+        round(&mut state, &m_vec);
+        permute(&mut m_vec);
+    }
+
+    first_output_words(&state)
+}
+
+fn initial_state() -> [[u32; 4]; 4] {
+    [
         [IV[0], IV[1], IV[2], IV[3]],
         [IV[4], IV[5], IV[6], IV[7]],
         [IV[0], IV[1], IV[2], IV[3]],
         [0, 0, BLOCK_LEN, FLAGS],
-    ];
+    ]
+}
 
-    for _ in 0..7 {
-        round(&mut state, &m_vec);
-        permute_u32(&mut m_vec);
-    }
-
+fn first_output_words(state: &[[u32; 4]; 4]) -> [u32; OUTPUT_WORDS] {
     [
         state[0][0] ^ state[2][0],
         state[0][1] ^ state[2][1],
@@ -112,14 +110,6 @@ fn compress(input: [u32; INPUT_WORDS]) -> [u32; 16] {
         state[1][1] ^ state[3][1],
         state[1][2] ^ state[3][2],
         state[1][3] ^ state[3][3],
-        state[2][0] ^ IV[0],
-        state[2][1] ^ IV[1],
-        state[2][2] ^ IV[2],
-        state[2][3] ^ IV[3],
-        state[3][0] ^ IV[4],
-        state[3][1] ^ IV[5],
-        state[3][2] ^ IV[6],
-        state[3][3] ^ IV[7],
     ]
 }
 
@@ -261,13 +251,6 @@ fn u32_to_limbs<F: PrimeCharacteristicRing>(value: u32) -> [F; 2] {
 
 fn u32_to_bits_le<F: PrimeCharacteristicRing>(value: u32) -> [F; 32] {
     array::from_fn(|i| F::from_bool(((value >> i) & 1) == 1))
-}
-
-fn permute_u32(m: &mut [u32; INPUT_WORDS]) {
-    let old = *m;
-    for i in 0..INPUT_WORDS {
-        m[i] = old[MSG_PERMUTATION[i]];
-    }
 }
 
 #[cfg(test)]
