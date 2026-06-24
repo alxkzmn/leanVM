@@ -89,6 +89,14 @@ def poseidon16_permute_half_hardcoded_left(left, right, output, offset):
     _ = left, right, output, offset
 
 
+def blake3_hash_64(left, right, output):
+    """BLAKE3 hash of 64 bytes encoded as 16 u16 limbs at each input pointer.
+
+    The precompile writes the 32-byte digest as 16 u16 limbs at `output`.
+    """
+    _ = left, right, output
+
+
 def add_be(a, b, result, length=None):
     _ = a, b, result, length
 

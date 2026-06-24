@@ -6,12 +6,12 @@ use crate::core::{F, Label};
 use crate::diagnostics::RunnerError;
 use crate::execution::memory::MemoryAccess;
 use crate::tables::TableT;
-use crate::{ExtensionOpMode, Table, TableTrace};
 use crate::{
-    POSEIDON16_COMPRESS_HALF_NAME, POSEIDON16_HARDCODED_LEFT_NAME, POSEIDON16_PERMUTE_HALF_HARDCODED_LEFT_NAME,
-    POSEIDON16_PERMUTE_HALF_NAME, POSEIDON16_PERMUTE_NAME, POSEIDON16_QUARTER_HARDCODED_LEFT_NAME,
-    POSEIDON16_QUARTER_NAME,
+    BLAKE3_HASH_64_NAME, POSEIDON16_COMPRESS_HALF_NAME, POSEIDON16_HARDCODED_LEFT_NAME,
+    POSEIDON16_PERMUTE_HALF_HARDCODED_LEFT_NAME, POSEIDON16_PERMUTE_HALF_NAME, POSEIDON16_PERMUTE_NAME,
+    POSEIDON16_QUARTER_HARDCODED_LEFT_NAME, POSEIDON16_QUARTER_NAME,
 };
+use crate::{ExtensionOpMode, Table, TableTrace};
 use backend::*;
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
@@ -77,6 +77,7 @@ pub enum PrecompileCompTimeArgs<S> {
         size: S,
         mode: ExtensionOpMode,
     },
+    Blake3Hash64,
 }
 
 impl<S> PrecompileCompTimeArgs<S> {
@@ -84,6 +85,7 @@ impl<S> PrecompileCompTimeArgs<S> {
         match self {
             Self::Poseidon16 { .. } => Table::poseidon16(),
             Self::ExtensionOp { .. } => Table::extension_op(),
+            Self::Blake3Hash64 => Table::blake3(),
         }
     }
 
@@ -99,6 +101,7 @@ impl<S> PrecompileCompTimeArgs<S> {
                 permute,
             },
             Self::ExtensionOp { size, mode } => PrecompileCompTimeArgs::ExtensionOp { size: f(size), mode },
+            Self::Blake3Hash64 => PrecompileCompTimeArgs::Blake3Hash64,
         }
     }
 }
@@ -293,6 +296,9 @@ impl<V: Display, S: Display> Display for PrecompileArgs<V, S> {
             }
             PrecompileCompTimeArgs::ExtensionOp { size, mode } => {
                 write!(f, "{}({arg_0}, {arg_1}, {res}, {size})", mode.name())
+            }
+            PrecompileCompTimeArgs::Blake3Hash64 => {
+                write!(f, "{BLAKE3_HASH_64_NAME}({arg_0}, {arg_1}, {res})")
             }
         }
     }

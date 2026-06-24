@@ -1,7 +1,7 @@
 use crate::{F, a_simplify_lang::post_optimization::propagate_copies, lang::*, parser::ConstArrayValue};
 use backend::*;
 use lean_vm::{
-    ALL_POSEIDON16_NAMES, Boolean, BooleanExpr, CustomHint, ExtensionOpMode, FunctionName,
+    ALL_POSEIDON16_NAMES, BLAKE3_HASH_64_NAME, Boolean, BooleanExpr, CustomHint, ExtensionOpMode, FunctionName,
     POSEIDON16_COMPRESS_HALF_NAME, POSEIDON16_HARDCODED_LEFT_NAME, POSEIDON16_PERMUTE_HALF_HARDCODED_LEFT_NAME,
     POSEIDON16_PERMUTE_HALF_NAME, POSEIDON16_PERMUTE_NAME, POSEIDON16_QUARTER_HARDCODED_LEFT_NAME,
     POSEIDON16_QUARTER_NAME, PrecompileArgs, PrecompileCompTimeArgs, SourceLocation,
@@ -1734,6 +1734,31 @@ fn simplify_lines(
                                     hardcoded_offset_left,
                                     permute,
                                 },
+                            }));
+                            continue;
+                        }
+
+                        if function_name == BLAKE3_HASH_64_NAME {
+                            if !targets.is_empty() {
+                                return Err(format!(
+                                    "Precompile {function_name} should not return values, at {location}"
+                                ));
+                            }
+                            if args.len() != 3 {
+                                return Err(format!(
+                                    "Precompile {function_name} expects 3 arguments (left, right, result), got {}, at {location}",
+                                    args.len()
+                                ));
+                            }
+                            let simplified_args = args
+                                .iter()
+                                .map(|arg| simplify_expr(ctx, state, const_malloc, arg, &mut res))
+                                .collect::<Result<Vec<_>, _>>()?;
+                            res.push(SimpleLine::Precompile(PrecompileArgs {
+                                arg_0: simplified_args[0].clone(),
+                                arg_1: simplified_args[1].clone(),
+                                res: simplified_args[2].clone(),
+                                data: PrecompileCompTimeArgs::Blake3Hash64,
                             }));
                             continue;
                         }

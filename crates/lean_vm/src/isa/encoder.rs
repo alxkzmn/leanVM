@@ -66,6 +66,7 @@ pub fn field_representation(instr: &Instruction) -> [F; N_INSTRUCTION_COLUMNS] {
                     assert!(*size >= 1, "invalid extension_op size={size}");
                     mode.flag_encoding() + EXT_OP_LEN_MULTIPLIER * size
                 }
+                PrecompileCompTimeArgs::Blake3Hash64 => BLAKE3_DOMAINSEP,
             };
             fields[instr_idx(EXEC_COL_AUX_2)] = F::from_usize(domainsep);
             match (precompile.arg_0, precompile.arg_1) {

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{array, collections::BTreeMap};
 
 use crate::{default_whir_config, prove_execution::prove_execution, verify_execution::verify_execution};
 use backend::*;
@@ -8,6 +8,22 @@ use rand::{RngExt, SeedableRng, rngs::StdRng};
 
 const N: usize = 11;
 const M: usize = 3;
+const BLAKE3_PROGRAM: &str = r#"
+INPUT_LIMBS = 32
+OUTPUT_LIMBS = 16
+PUBLIC_OUTPUTS = 8
+SCRATCH_SIZE = 64
+
+def main():
+    scratch = Array(SCRATCH_SIZE)
+    hint_witness("scratch", scratch)
+    blake3_hash_64(scratch, scratch + 16, scratch + INPUT_LIMBS)
+
+    public = 0
+    for i in unroll(0, PUBLIC_OUTPUTS):
+        public[i] = scratch[INPUT_LIMBS + i] + scratch[INPUT_LIMBS + PUBLIC_OUTPUTS + i]
+    return
+"#;
 
 const ALL_PRECOMPILES_PROGRAM: &str = r#"
 DIM = 5
@@ -262,6 +278,87 @@ fn all_precompiles_witness(ext_len: usize, bytecode: &Bytecode) -> ([F; PUBLIC_I
         ..Default::default()
     };
     (public_input, witness)
+}
+
+#[test]
+fn test_zk_vm_blake3_precompile_execute() {
+    let bytecode = compile_program(&ProgramSource::Raw(BLAKE3_PROGRAM.to_string()));
+    let input_words: [u32; 16] = array::from_fn(|i| {
+        let mut state = 0x424c_414b_4533_u64 ^ (i as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        state = state.wrapping_add(0xbf58_476d_1ce4_e5b9);
+        (state ^ (state >> 32)) as u32
+    });
+    let output = blake3_hash_64_u16(input_words);
+
+    let mut scratch = F::zero_vec(64);
+    for (word, limbs) in input_words.iter().zip(scratch[..32].chunks_exact_mut(2)) {
+        limbs[0] = F::from_u16(*word as u16);
+        limbs[1] = F::from_u16((word >> 16) as u16);
+    }
+    for (dst, limb) in scratch[32..48].iter_mut().zip(output) {
+        *dst = F::from_u16(limb);
+    }
+
+    let mut hints = Hints::default();
+    hints.insert(
+        &bytecode,
+        "scratch",
+        ArenaVec::from_iter([ArenaVec::from_slice(&scratch)]),
+    );
+    let witness = ExecutionWitness {
+        hints,
+        ..Default::default()
+    };
+
+    let mut public_input = [F::ZERO; PUBLIC_INPUT_LEN];
+    for i in 0..PUBLIC_INPUT_LEN {
+        public_input[i] = scratch[32 + i] + scratch[32 + PUBLIC_INPUT_LEN + i];
+    }
+
+    try_execute_bytecode(&bytecode, &public_input, &witness, false).unwrap();
+}
+
+#[test]
+fn test_zk_vm_blake3_precompile_prove() {
+    let (bytecode, public_input, witness) = blake3_precompile_case();
+    test_zk_vm_helper_with_bytecode(&bytecode, &public_input, witness);
+}
+
+fn blake3_precompile_case() -> (Bytecode, [F; PUBLIC_INPUT_LEN], ExecutionWitness) {
+    let bytecode = compile_program(&ProgramSource::Raw(BLAKE3_PROGRAM.to_string()));
+    let input_words: [u32; 16] = array::from_fn(|i| {
+        let mut state = 0x424c_414b_4533_u64 ^ (i as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        state = state.wrapping_add(0xbf58_476d_1ce4_e5b9);
+        (state ^ (state >> 32)) as u32
+    });
+    let output = blake3_hash_64_u16(input_words);
+
+    let mut scratch = F::zero_vec(64);
+    for (word, limbs) in input_words.iter().zip(scratch[..32].chunks_exact_mut(2)) {
+        limbs[0] = F::from_u16(*word as u16);
+        limbs[1] = F::from_u16((word >> 16) as u16);
+    }
+    for (dst, limb) in scratch[32..48].iter_mut().zip(output) {
+        *dst = F::from_u16(limb);
+    }
+
+    let mut hints = Hints::default();
+    hints.insert(
+        &bytecode,
+        "scratch",
+        ArenaVec::from_iter([ArenaVec::from_slice(&scratch)]),
+    );
+    let witness = ExecutionWitness {
+        hints,
+        ..Default::default()
+    };
+
+    let mut public_input = [F::ZERO; PUBLIC_INPUT_LEN];
+    for i in 0..PUBLIC_INPUT_LEN {
+        public_input[i] = scratch[32 + i] + scratch[32 + PUBLIC_INPUT_LEN + i];
+    }
+
+    (bytecode, public_input, witness)
 }
 
 #[test]

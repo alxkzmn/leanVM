@@ -140,6 +140,9 @@ pub fn get_execution_trace(
         });
     }
 
+    let blake3_trace = traces.get_mut(&Table::blake3()).unwrap();
+    fill_trace_blake3(&mut blake3_trace.columns);
+
     let extension_op_trace = traces.get_mut(&Table::extension_op()).unwrap();
     fill_trace_extension_op(extension_op_trace, &memory_padded);
 

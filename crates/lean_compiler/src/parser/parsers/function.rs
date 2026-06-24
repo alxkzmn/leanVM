@@ -8,7 +8,7 @@ use crate::{
         grammar::{ParsePair, Rule},
     },
 };
-use lean_vm::{ALL_POSEIDON16_NAMES, CUSTOM_HINTS, ExtensionOpMode};
+use lean_vm::{ALL_POSEIDON16_NAMES, BLAKE3_HASH_64_NAME, CUSTOM_HINTS, ExtensionOpMode};
 
 /// Reserved function names that users cannot define.
 pub const RESERVED_FUNCTION_NAMES: &[&str] = &[
@@ -35,6 +35,9 @@ fn is_reserved_function_name(name: &str) -> bool {
         return true;
     }
     if ALL_POSEIDON16_NAMES.contains(&name) {
+        return true;
+    }
+    if name == BLAKE3_HASH_64_NAME {
         return true;
     }
     if ExtensionOpMode::from_name(name).is_some() {
